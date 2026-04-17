@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Alga CRM — Yönetici Paneli</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue: #1a56db;
+    --blue-dark: #0f3eb3;
+    --blue-light: #e8f0fe;
+    --green: #0e9f6e;
+    --green-light: #f0fdf4;
+    --amber: #d97706;
+    --amber-light: #fffbeb;
+    --red: #e02424;
+    --red-light: #fef2f2;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-400: #9ca3af;
+    --gray-600: #4b5563;
+    --gray-800: #1f2937;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--gray-50); color: var(--gray-800); min-height: 100vh; }
+
+  /* GİRİŞ */
+  #giris-ekrani { position: fixed; inset: 0; background: white; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+  .logo-wrap { margin-bottom: 32px; text-align: center; }
+  .logo-icon { width: 52px; height: 52px; background: var(--blue); border-radius: 14px; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; }
+  .logo-icon svg { width: 26px; height: 26px; fill: white; }
+  .logo-wrap h1 { font-size: 20px; font-weight: 600; }
+  .logo-wrap p { font-size: 12px; color: var(--gray-400); }
+  .giris-kart { width: 100%; max-width: 340px; }
+  .f { margin-bottom: 12px; }
+  .f label { display: block; font-size: 12px; font-weight: 500; color: var(--gray-600); margin-bottom: 4px; }
+  .f input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--gray-200); border-radius: 9px; font-size: 14px; font-family: inherit; outline: none; transition: border-color .15s; }
+  .f input:focus { border-color: var(--blue); }
+  .btn-giris { width: 100%; padding: 11px; background: var(--blue); color: white; border: none; border-radius: 9px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; }
+  .hata { font-size: 12px; color: var(--red); margin-top: 8px; text-align: center; display: none; }
+
+  /* LAYOUT */
+  #admin-panel { display: none; min-height: 100vh; }
+  .header { background: white; border-bottom: 1px solid var(--gray-200); padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 56px; position: sticky; top: 0; z-index: 100; }
+  .header-logo { font-size: 16px; font-weight: 600; color: var(--blue); }
+  .header-badge { font-size: 10px; background: var(--blue-light); color: var(--blue); padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+  .header-nav { display: flex; gap: 4px; margin-left: auto; }
+  .nav-btn { padding: 6px 14px; border: none; background: none; border-radius: 8px; font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer; color: var(--gray-600); transition: all .15s; }
+  .nav-btn:hover { background: var(--gray-100); }
+  .nav-btn.aktif { background: var(--blue-light); color: var(--blue); }
+  .cikis-btn { padding: 6px 14px; border: 1px solid var(--gray-200); background: white; border-radius: 8px; font-size: 13px; font-family: inherit; cursor: pointer; color: var(--gray-600); }
+
+  .icerik { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  
+  /* SAYFA */
+  .sayfa { display: none; }
+  .sayfa.aktif { display: block; }
+
+  /* İSTATİSTİK KARTLARI */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .stat-kart { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 16px 18px; }
+  .stat-etiket { font-size: 12px; color: var(--gray-400); margin-bottom: 6px; }
+  .stat-deger { font-size: 28px; font-weight: 600; }
+  .stat-alt { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
+  .stat-mavi { color: var(--blue); }
+  .stat-yesil { color: var(--green); }
+  .stat-kirmizi { color: var(--red); }
+  .stat-turuncu { color: var(--amber); }
+
+  /* FİLTRELER */
+  .filtre-bar { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; }
+  .filtre-bar input, .filtre-bar select { padding: 8px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 13px; font-family: inherit; outline: none; background: white; }
+  .filtre-bar input:focus, .filtre-bar select:focus { border-color: var(--blue); }
+  .filtre-bar input { flex: 1; min-width: 200px; }
+  .export-btn { margin-left: auto; padding: 8px 16px; background: var(--green); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer; }
+
+  /* ZİYARET TABLOSU */
+  .tablo-kart { background: white; border: 1px solid var(--gray-200); border-radius: 12px; overflow: hidden; }
+  .tablo-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: var(--gray-50); }
+  th { padding: 11px 14px; text-align: left; font-size: 11px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--gray-200); white-space: nowrap; }
+  td { padding: 11px 14px; font-size: 13px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--gray-50); }
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .b-sicak { background: var(--red-light); color: var(--red); }
+  .b-ilik { background: var(--amber-light); color: var(--amber); }
+  .b-soguk { background: var(--blue-light); color: var(--blue); }
+  .b-anlasma { background: var(--green-light); color: var(--green); }
+  .bos { text-align: center; padding: 40px; color: var(--gray-400); font-size: 13px; }
+  
+  /* KULLANICI YÖNETİMİ */
+  .kullanici-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .kullanici-kart { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 16px; }
+  .kk-ust { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .avatar { width: 40px; height: 40px; background: var(--blue); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; flex-shrink: 0; }
+  .avatar-admin { background: var(--amber); }
+  .kk-adi { font-size: 14px; font-weight: 600; }
+  .kk-email { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+  .kk-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .kk-stat { background: var(--gray-50); border-radius: 8px; padding: 8px; text-align: center; }
+  .kk-stat-sayi { font-size: 18px; font-weight: 600; color: var(--blue); }
+  .kk-stat-etiket { font-size: 10px; color: var(--gray-400); margin-top: 2px; }
+  .rol-badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+  .rol-admin { background: var(--amber-light); color: var(--amber); }
+  .rol-saha { background: var(--blue-light); color: var(--blue); }
+
+  /* YENİ KULLANICI */
+  .yeni-kullanici-form { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+  .yeni-kullanici-form h3 { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; align-items: end; }
+  .form-grid input, .form-grid select { padding: 9px 11px; border: 1.5px solid var(--gray-200); border-radius: 9px; font-size: 13px; font-family: inherit; outline: none; transition: border-color .15s; }
+  .form-grid input:focus, .form-grid select:focus { border-color: var(--blue); }
+  .ekle-btn { padding: 9px 18px; background: var(--blue); color: white; border: none; border-radius: 9px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; white-space: nowrap; }
+
+  /* SPINNER */
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--gray-200); border-top-color: var(--blue); border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* TOAST */
+  #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--gray-800); color: white; padding: 10px 18px; border-radius: 20px; font-size: 13px; z-index: 9999; opacity: 0; transition: all .3s; pointer-events: none; }
+  #toast.goster { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 640px) {
+    .icerik { padding: 16px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .header-nav { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- GİRİŞ -->
+<div id="giris-ekrani">
+  <div class="logo-wrap">
+    <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></div>
+    <h1>Alga CRM Admin</h1>
+    <p>Yönetici paneli</p>
+  </div>
+  <div class="giris-kart">
+    <div class="f"><label>E-posta</label><input type="email" id="giris-email" placeholder="admin@algateknoloji.com.tr" autocomplete="email"/></div>
+    <div class="f"><label>Şifre</label><input type="password" id="giris-sifre" placeholder="••••••••" autocomplete="current-password"/></div>
+    <button class="btn-giris" onclick="girisYap()">Giriş Yap</button>
+    <p class="hata" id="giris-hata"></p>
+  </div>
+</div>
+
+<!-- ADMIN PANELİ -->
+<div id="admin-panel">
+  <div class="header">
+    <span class="header-logo">Alga CRM</span>
+    <span class="header-badge">admin</span>
+    <div class="header-nav">
+      <button class="nav-btn aktif" onclick="sayfaGec('ozet')">Özet</button>
+      <button class="nav-btn" onclick="sayfaGec('ziyaretler')">Ziyaretler</button>
+      <button class="nav-btn" onclick="sayfaGec('kullanicilar')">Ekip</button>
+    </div>
+    <button class="cikis-btn" onclick="cikisYap()" style="margin-left:auto;">Çıkış</button>
+  </div>
+
+  <div class="icerik">
+    <!-- ÖZET SAYFASI -->
+    <div class="sayfa aktif" id="sayfa-ozet">
+      <div class="stat-grid" id="stat-grid">
+        <div class="stat-kart"><div class="stat-etiket">Toplam ziyaret</div><div class="stat-deger stat-mavi" id="s-toplam">—</div></div>
+        <div class="stat-kart"><div class="stat-etiket">Bu hafta</div><div class="stat-deger" id="s-hafta">—</div></div>
+        <div class="stat-kart"><div class="stat-etiket">Sıcak lead</div><div class="stat-deger stat-kirmizi" id="s-sicak">—</div></div>
+        <div class="stat-kart"><div class="stat-etiket">Anlaşma</div><div class="stat-deger stat-yesil" id="s-anlasma">—</div></div>
+        <div class="stat-kart"><div class="stat-etiket">Aktif ekip</div><div class="stat-deger stat-turuncu" id="s-ekip">—</div></div>
+      </div>
+      <div class="tablo-kart">
+        <div style="padding:16px 18px;border-bottom:1px solid var(--gray-200);display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:14px;font-weight:600;">Son ziyaretler</span>
+          <button class="nav-btn" onclick="sayfaGec('ziyaretler')" style="font-size:12px;">Tümünü gör →</button>
+        </div>
+        <div class="tablo-wrap">
+          <table>
+            <thead><tr><th>Temsilci</th><th>İstasyon</th><th>Ürün</th><th>Sonuç</th><th>Tarih</th></tr></thead>
+            <tbody id="son-ziyaretler-tablo"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ZİYARETLER SAYFASI -->
+    <div class="sayfa" id="sayfa-ziyaretler">
+      <div class="filtre-bar">
+        <input type="text" id="filtre-arama" placeholder="İstasyon veya temsilci ara..." oninput="filtrele()"/>
+        <select id="filtre-sonuc" onchange="filtrele()">
+          <option value="">Tüm sonuçlar</option>
+          <option value="sicak">🔥 Sıcak</option>
+          <option value="ilik">🟡 Ilık</option>
+          <option value="soguk">🔵 Soğuk</option>
+          <option value="anlasma">✅ Anlaştı</option>
+        </select>
+        <select id="filtre-temsilci" onchange="filtrele()">
+          <option value="">Tüm temsilciler</option>
+        </select>
+        <button class="export-btn" onclick="csvExport()">⬇ Excel'e aktar</button>
+      </div>
+      <div class="tablo-kart">
+        <div class="tablo-wrap">
+          <table>
+            <thead><tr><th>Temsilci</th><th>İstasyon</th><th>Marka</th><th>Yetkili</th><th>Ürün</th><th>Fiyat</th><th>Sonuç</th><th>Katalog</th><th>Takip</th><th>Not</th><th>Tarih</th></tr></thead>
+            <tbody id="ziyaretler-tablo"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- KULLANICILAR SAYFASI -->
+    <div class="sayfa" id="sayfa-kullanicilar">
+      <div class="yeni-kullanici-form">
+        <h3>Yeni ekip üyesi ekle</h3>
+        <div class="form-grid">
+          <input type="text" id="yeni-ad" placeholder="Ad Soyad"/>
+          <input type="email" id="yeni-email" placeholder="eposta@algateknoloji.com.tr"/>
+          <select id="yeni-rol">
+            <option value="saha">Saha temsilcisi</option>
+            <option value="admin">Admin (yönetici)</option>
+          </select>
+          <button class="ekle-btn" onclick="kullaniciEkle()">Ekle</button>
+        </div>
+        <p style="font-size:11px;color:var(--gray-400);margin-top:8px;">Kişiye otomatik davet maili gönderilir. Şifresini kendisi belirler.</p>
+      </div>
+      <div class="kullanici-grid" id="kullanici-grid"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+
+const SUPABASE_URL = 'https://rbcofacflhkrquhefqzj.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJiY29mYWNmbGhrcnF1aGVmcXpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzODE1MjIsImV4cCI6MjA5MTk1NzUyMn0.iFFJWiR8d9ICFOD0mxBHKK8KAhmDowc-6n02461q3eQ';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let tumZiyaretler = [];
+let mevcutKullanici = null;
+
+// --- GİRİŞ ---
+async function girisYap() {
+  const email = document.getElementById('giris-email').value.trim();
+  const sifre = document.getElementById('giris-sifre').value;
+  const hata = document.getElementById('giris-hata');
+  hata.style.display = 'none';
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: sifre });
+  if (error) { hata.textContent = 'Hatalı giriş'; hata.style.display = 'block'; return; }
+
+  // Admin kontrolü
+  const { data: profil } = await sb.from('profiller').select('*').eq('id', data.user.id).single();
+  if (profil?.rol !== 'admin') {
+    await sb.auth.signOut();
+    hata.textContent = 'Bu panel sadece yöneticilere açıktır';
+    hata.style.display = 'block';
+    return;
+  }
+
+  mevcutKullanici = { ...data.user, ...profil };
+  adminPanelBaslat();
+}
+
+async function adminPanelBaslat() {
+  document.getElementById('giris-ekrani').style.display = 'none';
+  document.getElementById('admin-panel').style.display = 'block';
+  await Promise.all([ziyaretleriYukle(), istatistikleriGuncelle(), kullanicilariYukle()]);
+}
+
+// --- ZİYARETLER ---
+async function ziyaretleriYukle() {
+  const { data } = await sb.from('ziyaretler')
+    .select('*, profiller(ad_soyad)')
+    .order('created_at', { ascending: false });
+
+  tumZiyaretler = data || [];
+  tabloGuncelle(tumZiyaretler);
+  sonZiyaretlerGuncelle(tumZiyaretler.slice(0, 10));
+  temsilciFilterGuncelle();
+}
+
+function sonZiyaretlerGuncelle(ziyaretler) {
+  const tbody = document.getElementById('son-ziyaretler-tablo');
+  if (!ziyaretler.length) { tbody.innerHTML = '<tr><td colspan="5" class="bos">Henüz ziyaret yok</td></tr>'; return; }
+  tbody.innerHTML = ziyaretler.map(z => `
+    <tr>
+      <td>${z.profiller?.ad_soyad || '—'}</td>
+      <td><strong>${z.istasyon_adi}</strong></td>
+      <td>${z.urun || '—'}</td>
+      <td>${sonucBadge(z.sonuc)}</td>
+      <td>${new Date(z.created_at).toLocaleDateString('tr-TR')}</td>
+    </tr>`).join('');
+}
+
+function tabloGuncelle(ziyaretler) {
+  const tbody = document.getElementById('ziyaretler-tablo');
+  if (!ziyaretler.length) { tbody.innerHTML = '<tr><td colspan="11" class="bos">Kayıt bulunamadı</td></tr>'; return; }
+  tbody.innerHTML = ziyaretler.map(z => `
+    <tr>
+      <td>${z.profiller?.ad_soyad || '—'}</td>
+      <td><strong>${z.istasyon_adi}</strong></td>
+      <td>${z.istasyon_marka || '—'}</td>
+      <td>${z.yetkili_adi || '—'}${z.yetkili_unvan ? '<br><small style="color:#9ca3af">'+z.yetkili_unvan+'</small>' : ''}</td>
+      <td>${z.urun || '—'}</td>
+      <td>${z.fiyat ? '₺'+z.fiyat : '—'}</td>
+      <td>${sonucBadge(z.sonuc)}</td>
+      <td>${z.katalog_birakildi ? '✅' : '—'}</td>
+      <td>${z.takip_tarihi || '—'}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${z.not_metni || '—'}</td>
+      <td>${new Date(z.created_at).toLocaleDateString('tr-TR')}</td>
+    </tr>`).join('');
+}
+
+function sonucBadge(sonuc) {
+  const map = { sicak: 'b-sicak', ilik: 'b-ilik', soguk: 'b-soguk', anlasma: 'b-anlasma' };
+  const label = { sicak: '🔥 Sıcak', ilik: '🟡 Ilık', soguk: '🔵 Soğuk', anlasma: '✅ Anlaştı' };
+  return sonuc ? `<span class="badge ${map[sonuc]}">${label[sonuc]}</span>` : '—';
+}
+
+// --- İSTATİSTİKLER ---
+async function istatistikleriGuncelle() {
+  const { data } = await sb.from('ziyaretler').select('sonuc, created_at, kullanici_id');
+  if (!data) return;
+  
+  const buHafta = new Date(); buHafta.setDate(buHafta.getDate() - 7);
+  document.getElementById('s-toplam').textContent = data.length;
+  document.getElementById('s-hafta').textContent = data.filter(z => new Date(z.created_at) > buHafta).length;
+  document.getElementById('s-sicak').textContent = data.filter(z => z.sonuc === 'sicak').length;
+  document.getElementById('s-anlasma').textContent = data.filter(z => z.sonuc === 'anlasma').length;
+  document.getElementById('s-ekip').textContent = new Set(data.map(z => z.kullanici_id)).size;
+}
+
+// --- FİLTRELE ---
+function filtrele() {
+  const arama = document.getElementById('filtre-arama').value.toLowerCase();
+  const sonuc = document.getElementById('filtre-sonuc').value;
+  const temsilci = document.getElementById('filtre-temsilci').value;
+
+  const filtered = tumZiyaretler.filter(z => {
+    const aramaEsles = !arama || z.istasyon_adi.toLowerCase().includes(arama) || (z.profiller?.ad_soyad || '').toLowerCase().includes(arama);
+    const sonucEsles = !sonuc || z.sonuc === sonuc;
+    const temsilciEsles = !temsilci || z.kullanici_id === temsilci;
+    return aramaEsles && sonucEsles && temsilciEsles;
+  });
+  tabloGuncelle(filtered);
+}
+
+function temsilciFilterGuncelle() {
+  const select = document.getElementById('filtre-temsilci');
+  const benzersiz = [...new Map(tumZiyaretler.map(z => [z.kullanici_id, z.profiller?.ad_soyad])).entries()];
+  select.innerHTML = '<option value="">Tüm temsilciler</option>' + benzersiz.map(([id, ad]) => `<option value="${id}">${ad || id}</option>`).join('');
+}
+
+// --- CSV EXPORT ---
+function csvExport() {
+  const basliklar = ['Temsilci','İstasyon','Marka','Yetkili','Unvan','Ürün','Fiyat','Sonuç','Katalog','Takip Tarihi','Not','Tarih'];
+  const satirlar = tumZiyaretler.map(z => [
+    z.profiller?.ad_soyad || '',
+    z.istasyon_adi, z.istasyon_marka || '',
+    z.yetkili_adi || '', z.yetkili_unvan || '',
+    z.urun || '', z.fiyat || '',
+    z.sonuc || '', z.katalog_birakildi ? 'Evet' : 'Hayır',
+    z.takip_tarihi || '', z.not_metni || '',
+    new Date(z.created_at).toLocaleDateString('tr-TR')
+  ].map(v => '"' + String(v).replace(/"/g, '""') + '"'));
+  
+  const csv = '\uFEFF' + [basliklar, ...satirlar].map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'alga_ziyaretler_' + new Date().toLocaleDateString('tr-TR').replace(/\./g, '-') + '.csv';
+  a.click();
+  toast('Excel dosyası indirildi');
+}
+
+// --- KULLANICILAR ---
+async function kullanicilariYukle() {
+  const { data: profiller } = await sb.from('profiller').select('*').order('created_at');
+  if (!profiller) return;
+
+  // Her kullanıcının ziyaret sayısını hesapla
+  const { data: sayilar } = await sb.from('ziyaretler').select('kullanici_id, sonuc');
+  const sayiMap = {};
+  (sayilar || []).forEach(z => {
+    if (!sayiMap[z.kullanici_id]) sayiMap[z.kullanici_id] = { toplam: 0, sicak: 0, anlasma: 0 };
+    sayiMap[z.kullanici_id].toplam++;
+    if (z.sonuc === 'sicak') sayiMap[z.kullanici_id].sicak++;
+    if (z.sonuc === 'anlasma') sayiMap[z.kullanici_id].anlasma++;
+  });
+
+  const grid = document.getElementById('kullanici-grid');
+  grid.innerHTML = profiller.map(p => {
+    const s = sayiMap[p.id] || { toplam: 0, sicak: 0, anlasma: 0 };
+    return `
+      <div class="kullanici-kart">
+        <div class="kk-ust">
+          <div class="avatar ${p.rol === 'admin' ? 'avatar-admin' : ''}">${(p.ad_soyad || '?').charAt(0).toUpperCase()}</div>
+          <div>
+            <div class="kk-adi">${p.ad_soyad || '—'} <span class="rol-badge ${p.rol === 'admin' ? 'rol-admin' : 'rol-saha'}">${p.rol === 'admin' ? 'Admin' : 'Saha'}</span></div>
+            <div class="kk-email">${p.telefon || ''}</div>
+          </div>
+        </div>
+        <div class="kk-stats">
+          <div class="kk-stat"><div class="kk-stat-sayi">${s.toplam}</div><div class="kk-stat-etiket">Ziyaret</div></div>
+          <div class="kk-stat"><div class="kk-stat-sayi" style="color:var(--red)">${s.sicak}</div><div class="kk-stat-etiket">Sıcak</div></div>
+          <div class="kk-stat"><div class="kk-stat-sayi" style="color:var(--green)">${s.anlasma}</div><div class="kk-stat-etiket">Anlaştı</div></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function kullaniciEkle() {
+  const ad = document.getElementById('yeni-ad').value.trim();
+  const email = document.getElementById('yeni-email').value.trim();
+  const rol = document.getElementById('yeni-rol').value;
+  if (!ad || !email) { toast('Ad ve e-posta gerekli'); return; }
+
+  // Supabase invite (admin API gerekir - service key ile yapılır)
+  // Şimdilik kullanıcıya talimat göster
+  toast('Supabase panelinden davet gönderin: Authentication → Users → Invite');
+  
+  // NOT: Gerçek daveti Supabase dashboard'dan yapacaksınız:
+  // Authentication → Users → "Invite user" → email girin
+  // Sonra bu SQL ile rol atayın:
+  // UPDATE profiller SET ad_soyad='AD', rol='ROL' WHERE id=(SELECT id FROM auth.users WHERE email='EMAIL');
+}
+
+// --- SAYFA GEÇİŞİ ---
+function sayfaGec(sayfa) {
+  document.querySelectorAll('.sayfa').forEach(s => s.classList.remove('aktif'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('aktif'));
+  document.getElementById('sayfa-' + sayfa).classList.add('aktif');
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    if (b.textContent.trim().toLowerCase().includes(sayfa === 'ozet' ? 'özet' : sayfa === 'ziyaretler' ? 'ziyaret' : 'ekip')) b.classList.add('aktif');
+  });
+}
+
+function cikisYap() {
+  if (confirm('Çıkış yapmak istiyor musunuz?')) { sb.auth.signOut(); location.reload(); }
+}
+
+function toast(mesaj) {
+  const el = document.getElementById('toast');
+  el.textContent = mesaj;
+  el.classList.add('goster');
+  setTimeout(() => el.classList.remove('goster'), 2500);
+}
+
+// Oturum kontrolü
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session) {
+    const { data: profil } = await sb.from('profiller').select('*').eq('id', session.user.id).single();
+    if (profil?.rol === 'admin') {
+      mevcutKullanici = { ...session.user, ...profil };
+      adminPanelBaslat();
+    }
+  }
+});
+
+document.getElementById('giris-sifre')?.addEventListener('keydown', e => { if (e.key === 'Enter') girisYap(); });
+</script>
+</body>
+</html>
