@@ -279,9 +279,15 @@ async function baslat(){
   var bitis = new Date(); var bas = new Date(); bas.setMonth(bas.getMonth()-3);
   document.getElementById('f-bas').value = bas.toISOString().slice(0,10);
   document.getElementById('f-bit').value = bitis.toISOString().slice(0,10);
-  await saticiListesiYukle();
-  await bayiListesiYukle();
-  await raporYukle();
+  try { await saticiListesiYukle(); } catch(e) { console.warn('satici:',e); }
+  try { await bayiListesiYukle(); } catch(e) { console.warn('bayi tablosu yok - SQL calistirin:',e); }
+  try {
+    await raporYukle();
+  } catch(e) {
+    console.error('rapor:',e);
+    var ov=document.getElementById('yukleniyor-overlay');
+    if(ov) ov.classList.remove('aktif');
+  }
 }
 
 async function bayiListesiYukle(){
