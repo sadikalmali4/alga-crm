@@ -392,10 +392,18 @@ function gosterHata(mesaj) {
 }
 
 async function uygulamaBaslat(user) {
-  mevcutKullanici = user; // hemen set et, profil sorgusu bekleme
-  const { data: profil } = await sb.from('profiller').select('*').eq('id', user.id).single();
-  if (profil) mevcutKullanici = { ...user, ...profil };
-  document.getElementById('profil-btn').textContent = (profil?.ad_soyad || user.email || 'K').charAt(0).toUpperCase();
+  mevcutKullanici = user;
+  document.getElementById('profil-btn').textContent = (user.email || 'K').charAt(0).toUpperCase();
+  // profil fetch async - hata olsa bile devam et
+  fetch(SUPABASE_URL + '/rest/v1/profiller?id=eq.' + user.id + '&limit=1', {
+    headers: { 'apikey': SUPABASE_KEY }
+  }).then(r => r.json()).then(arr => {
+    if (arr && arr[0]) {
+      mevcutKullanici = { ...user, ...arr[0] };
+      var btn = document.getElementById('profil-btn');
+      if (btn && arr[0].ad_soyad) btn.textContent = arr[0].ad_soyad.charAt(0).toUpperCase();
+    }
+  }).catch(function(){});
   document.getElementById('giris-ekrani').style.display = 'none';
   const app = document.getElementById('ana-uygulama');
   app.style.display = 'flex';
@@ -565,6 +573,7 @@ async function ziyaretKaydet() {
     takip_tarihi: document.getElementById('f-takip').value || null,
   };
   try {
+    console.log('INSERT basladi, userId:', userId, 'istasyon:', secilenIstasyon.adi);
     const resp = await Promise.race([
       fetch(SUPABASE_URL + '/rest/v1/ziyaretler', {
         method: 'POST',
@@ -575,8 +584,9 @@ async function ziyaretKaydet() {
         },
         body: JSON.stringify(ziyaret)
       }),
-      new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('Bağlantı zaman aşımı (10sn)')); }, 10000); })
+      new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('Zaman asimi v2 (10sn)')); }, 10000); })
     ]);
+    console.log('INSERT tamamlandi, status:', resp.status);
     if (!resp.ok) {
       var errText = await resp.text();
       throw new Error('HTTP ' + resp.status + ': ' + errText);
