@@ -541,7 +541,10 @@ async function ziyaretKaydet() {
     setTimeout(function(){ window.location.href='/alga-crm/index.html'; }, 1500);
     return;
   }
-  var fotoUrl = await fotoYukle(userId, secilenIstasyon.adi);
+  var fotoUrl = await Promise.race([
+    fotoYukle(userId, secilenIstasyon.adi),
+    new Promise(function(r){ setTimeout(function(){ r(null); }, 15000); })
+  ]);
   var urunVal = document.getElementById('f-urun').value;
   var urunNot = '';
   if (urunVal === 'istobal-tunel') urunNot = 'Konstrüksiyon: ' + document.getElementById('f-tunel-konstr').value;
@@ -634,20 +637,28 @@ function fotoSecildi(input) {
 
 function resimSikistir(file) {
   return new Promise(function(resolve) {
+    var timeout = setTimeout(function() { resolve(file); }, 8000);
     var reader = new FileReader();
+    reader.onerror = function() { clearTimeout(timeout); resolve(file); };
     reader.onload = function(e) {
       var img = new Image();
+      img.onerror = function() { clearTimeout(timeout); resolve(file); };
       img.onload = function() {
-        var MAX = 1200;
-        var w = img.width, h = img.height;
-        if (w > MAX || h > MAX) {
-          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-          else { w = Math.round(w * MAX / h); h = MAX; }
-        }
-        var canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        canvas.toBlob(function(blob) { resolve(blob); }, 'image/jpeg', 0.75);
+        try {
+          var MAX = 1200;
+          var w = img.width, h = img.height;
+          if (w > MAX || h > MAX) {
+            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+            else { w = Math.round(w * MAX / h); h = MAX; }
+          }
+          var canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          canvas.toBlob(function(blob) {
+            clearTimeout(timeout);
+            resolve(blob || file);
+          }, 'image/jpeg', 0.75);
+        } catch(ex) { clearTimeout(timeout); resolve(file); }
       };
       img.src = e.target.result;
     };
