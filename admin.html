@@ -308,29 +308,47 @@ async function saticiListesiYukle(){
 }
 
 async function raporYukle(){
-  document.getElementById('yukleniyor-overlay').classList.add('aktif');
-  var bas = document.getElementById('f-bas').value;
-  var bit = document.getElementById('f-bit').value;
-  var satici = document.getElementById('f-satici').value;
-  var sonuc = document.getElementById('f-sonuc').value;
-  var bayi = document.getElementById('f-bayi')?document.getElementById('f-bayi').value:'';
+  var ov = document.getElementById('yukleniyor-overlay');
+  ov.classList.add('aktif');
+  try {
+    var bas = document.getElementById('f-bas').value;
+    var bit = document.getElementById('f-bit').value;
+    var satici = document.getElementById('f-satici').value;
+    var sonuc = document.getElementById('f-sonuc').value;
+    var bayiEl = document.getElementById('f-bayi');
+    var bayi = bayiEl ? bayiEl.value : '';
 
-  var url = SUPABASE_URL+'/rest/v1/ziyaretler?select=*,profiller(ad_soyad)&order=created_at.desc&limit=3000';
-  if(bas) url += '&created_at=gte.'+bas+'T00:00:00';
-  if(bit) url += '&created_at=lte.'+bit+'T23:59:59';
-  if(satici) url += '&kullanici_id=eq.'+satici;
-  if(sonuc) url += '&sonuc=eq.'+sonuc;
-  if(bayi) url += '&bayi_id=eq.'+bayi;
+    var BASE = SUPABASE_URL+'/rest/v1';
+    var url = BASE+'/ziyaretler?select=*&order=created_at.desc&limit=2000';
+    if(bas) url += '&created_at=gte.'+bas+'T00:00:00';
+    if(bit) url += '&created_at=lte.'+bit+'T23:59:59';
+    if(satici) url += '&kullanici_id=eq.'+satici;
+    if(sonuc) url += '&sonuc=eq.'+sonuc;
+    if(bayi) url += '&bayi_id=eq.'+bayi;
 
-  var r = await fetch(url,{headers:{'apikey':SUPABASE_KEY,'Range':'0-2999'}});
-  tumVeriler = await r.json();
-  if(!Array.isArray(tumVeriler)) tumVeriler=[];
+    var resp = await Promise.race([
+      fetch(url,{headers:{'apikey':SUPABASE_KEY}}),
+      new Promise(function(_,rej){setTimeout(function(){rej(new Error('Zaman asimi'));},12000);})
+    ]);
+    var raw = await resp.json();
+    tumVeriler = Array.isArray(raw) ? raw : [];
 
-  statGuncelle();
-  grafikGuncelle();
-  saticiTabloGuncelle();
-  tabloGuncelle(tumVeriler);
-  document.getElementById('yukleniyor-overlay').classList.remove('aktif');
+    // Satici adlarini ayri cek (JOIN yok)
+    var profResp = await fetch(BASE+'/profiller?select=id,ad_soyad',{headers:{'apikey':SUPABASE_KEY}});
+    var profArr = await profResp.json();
+    var profMap = {};
+    if(Array.isArray(profArr)) profArr.forEach(function(p){profMap[p.id]=p.ad_soyad;});
+    tumVeriler.forEach(function(z){z._satici_ad = profMap[z.kullanici_id]||'Bilinmiyor';});
+
+    statGuncelle();
+    grafikGuncelle();
+    saticiTabloGuncelle();
+    tabloGuncelle(tumVeriler);
+  } catch(e) {
+    console.error('raporYukle hata:', e);
+  } finally {
+    ov.classList.remove('aktif');
+  }
 }
 
 function statGuncelle(){
@@ -350,7 +368,7 @@ function grafikGuncelle(){
   // Satici bazinda
   var saticiSay={};
   tumVeriler.forEach(function(z){
-    var ad=(z.profiller&&z.profiller.ad_soyad)?z.profiller.ad_soyad:'Bilinmiyor';
+    var ad=z._satici_ad||'Bilinmiyor';
     saticiSay[ad]=(saticiSay[ad]||0)+1;
   });
   var saticiLabel=Object.keys(saticiSay);
@@ -381,7 +399,7 @@ function grafikGuncelle(){
 function saticiTabloGuncelle(){
   var saticiMap={};
   tumVeriler.forEach(function(z){
-    var ad=(z.profiller&&z.profiller.ad_soyad)?z.profiller.ad_soyad:'Bilinmiyor';
+    var ad=z._satici_ad||'Bilinmiyor';
     if(!saticiMap[ad]) saticiMap[ad]={toplam:0,sicak:0,anlasma:0,teklif:0,takipte:0,teklifTop:0};
     saticiMap[ad].toplam++;
     if(z.sonuc==='sicak') saticiMap[ad].sicak++;
@@ -408,7 +426,7 @@ function tabloGuncelle(veriler){
   if(!veriler.length){ document.getElementById('ziyaret-tbody').innerHTML='<tr><td colspan="8" class="bos">Kayıt bulunamadı</td></tr>'; return; }
   document.getElementById('ziyaret-tbody').innerHTML=veriler.slice(0,500).map(function(z){
     var tarih=new Date(z.created_at).toLocaleDateString('tr-TR');
-    var ad=(z.profiller&&z.profiller.ad_soyad)?z.profiller.ad_soyad:'—';
+    var ad=z._satici_ad||'—';
     var badge=BADGE[z.sonuc]||''; var lbl=LBL[z.sonuc]||z.sonuc||'—';
     return '<tr>'+
       '<td style="white-space:nowrap">'+tarih+'</td>'+
@@ -459,7 +477,7 @@ function csvIndir(){
   var satirlar=[['Tarih','Satici','Istasyon','Marka','Urunler','Sonuc','Teklif TL','Not','Takip','Katalog']];
   tumVeriler.forEach(function(z){
     var tarih=new Date(z.created_at).toLocaleDateString('tr-TR');
-    var ad=(z.profiller&&z.profiller.ad_soyad)?z.profiller.ad_soyad:'';
+    var ad=z._satici_ad||'';
     satirlar.push([
       tarih,ad,z.istasyon_adi||'',z.istasyon_marka||'',
       z.urun||'',z.sonuc||'',z.teklif_tutari||'',
