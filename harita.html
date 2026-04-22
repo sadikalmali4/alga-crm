@@ -738,7 +738,8 @@ async function gecmisYukle() {
       var cls='', lbl='';
       if(etiket[z.sonuc]){ cls=etiket[z.sonuc][0]; lbl=etiket[z.sonuc][1]; }
       var tarih=new Date(z.created_at).toLocaleDateString('tr-TR');
-      var fotoHtml=z.foto_url?'<div class="gecmis-foto"><img src="'+z.foto_url+'" onclick="fotoLightboxAc(''+z.foto_url+'')"/></div>':'';
+      var fotoHtml='';
+      if(z.foto_url){ fotoHtml='<div class="gecmis-foto"><img src="'+z.foto_url+'" onclick="fotoLightboxAc(this.src)"/></div>'; }
       // Teklif kutusu
       var teklifHtml='';
       if(z.teklif_tutari){
