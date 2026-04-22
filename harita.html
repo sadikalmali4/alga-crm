@@ -603,10 +603,20 @@ async function gecmisYukle() {
   if (!secilenIstasyon) return;
   const liste = document.getElementById('gecmis-liste');
   liste.innerHTML = '<div class="bos-durum">Yükleniyor...</div>';
-  const { data } = await sb.from('ziyaretler')
-    .select('*, profiller(ad_soyad)')
-    .eq('istasyon_adi', secilenIstasyon.adi)
-    .order('created_at', { ascending: false });
+  var enc = encodeURIComponent(secilenIstasyon.adi);
+  var data = null;
+  try {
+    var r = await Promise.race([
+      fetch(SUPABASE_URL + '/rest/v1/ziyaretler?select=*,profiller(ad_soyad)&istasyon_adi=eq.' + enc + '&order=created_at.desc', {
+        headers: { 'apikey': SUPABASE_KEY }
+      }),
+      new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('timeout')); }, 8000); })
+    ]);
+    data = await r.json();
+  } catch(e) {
+    liste.innerHTML = '<div class="bos-durum">Yüklenemedi: ' + e.message + '</div>';
+    return;
+  }
   if (!data || !data.length) { liste.innerHTML = '<div class="bos-durum">Bu istasyona henüz ziyaret kaydı yok</div>'; return; }
   const sonucEtiket = { sicak: ['badge-sicak','🔥 Sıcak'], ilik: ['badge-ilik','🟡 Ilık'], soguk: ['badge-soguk','🔵 Soğuk'], anlasma: ['badge-anlasma','✅ Anlaştı'] };
   liste.innerHTML = data.map(z => {
