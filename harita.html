@@ -565,8 +565,11 @@ async function ziyaretKaydet() {
     takip_tarihi: document.getElementById('f-takip').value || null,
   };
   try {
-    const { error } = await sb.from('ziyaretler').insert(ziyaret);
-    if (error) throw error;
+    const result = await Promise.race([
+      sb.from('ziyaretler').insert(ziyaret),
+      new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('Bağlantı zaman aşımı (10sn)')); }, 10000); })
+    ]);
+    if (result.error) throw result.error;
     toast('✓ Ziyaret kaydedildi!');
     formTemizle(); tabDegistir('gecmis');
   } catch(e) {
