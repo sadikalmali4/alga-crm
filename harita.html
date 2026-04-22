@@ -392,9 +392,10 @@ function gosterHata(mesaj) {
 }
 
 async function uygulamaBaslat(user) {
+  mevcutKullanici = user; // hemen set et, profil sorgusu bekleme
   const { data: profil } = await sb.from('profiller').select('*').eq('id', user.id).single();
-  mevcutKullanici = { ...user, ...profil };
-  document.getElementById('profil-btn').textContent = (profil?.ad_soyad || 'K').charAt(0).toUpperCase();
+  if (profil) mevcutKullanici = { ...user, ...profil };
+  document.getElementById('profil-btn').textContent = (profil?.ad_soyad || user.email || 'K').charAt(0).toUpperCase();
   document.getElementById('giris-ekrani').style.display = 'none';
   const app = document.getElementById('ana-uygulama');
   app.style.display = 'flex';
@@ -693,9 +694,12 @@ function fotoLightboxKapat() {
 // Auth state
 sb.auth.onAuthStateChange(async (event, session) => {
   if (session) {
+    if (!mevcutKullanici) mevcutKullanici = session.user;
     await uygulamaBaslat(session.user);
   } else {
-    window.location.href = '/alga-crm/index.html';
+    if (event !== 'INITIAL_SESSION') {
+      window.location.href = '/alga-crm/index.html';
+    }
   }
 });
 
