@@ -532,19 +532,15 @@ async function ziyaretKaydet() {
   if (!secilenSonuc) { toast('Ziyaret sonucu seçin'); return; }
   var btn = document.getElementById('kaydet-btn');
   btn.disabled = true; btn.textContent = 'Kaydediliyor...';
-  var session = await sb.auth.getSession();
-  var userId = session.data && session.data.session ? session.data.session.user.id : null;
-  if (!userId && mevcutKullanici) userId = mevcutKullanici.id;
-  if (!userId) {
-    toast('Giriş yapmanız gerekiyor');
-    btn.disabled = false; btn.textContent = 'Ziyareti Kaydet';
-    setTimeout(function(){ window.location.href='/alga-crm/index.html'; }, 1500);
-    return;
+  var userId = mevcutKullanici ? (mevcutKullanici.id || mevcutKullanici.user_id) : null;
+  if (!userId) { toast('Oturum bulunamadı, sayfayı yenileyin'); btn.disabled = false; btn.textContent = 'Ziyareti Kaydet'; return; }
+  var fotoUrl = null;
+  if (secilenFotoFile) {
+    fotoUrl = await Promise.race([
+      fotoYukle(userId, secilenIstasyon.adi),
+      new Promise(function(r){ setTimeout(function(){ r(null); }, 12000); })
+    ]);
   }
-  var fotoUrl = await Promise.race([
-    fotoYukle(userId, secilenIstasyon.adi),
-    new Promise(function(r){ setTimeout(function(){ r(null); }, 15000); })
-  ]);
   var urunVal = document.getElementById('f-urun').value;
   var urunNot = '';
   if (urunVal === 'istobal-tunel') urunNot = 'Konstrüksiyon: ' + document.getElementById('f-tunel-konstr').value;
@@ -567,11 +563,15 @@ async function ziyaretKaydet() {
     foto_url: fotoUrl,
     takip_tarihi: document.getElementById('f-takip').value || null,
   };
-  const { error } = await sb.from('ziyaretler').insert(ziyaret);
+  try {
+    const { error } = await sb.from('ziyaretler').insert(ziyaret);
+    if (error) throw error;
+    toast('✓ Ziyaret kaydedildi!');
+    formTemizle(); tabDegistir('gecmis');
+  } catch(e) {
+    toast('Hata: ' + (e.message || String(e)));
+  }
   btn.disabled = false; btn.textContent = 'Ziyareti Kaydet';
-  if (error) { toast('Kayıt hatası: ' + error.message); return; }
-  toast('✓ Ziyaret kaydedildi!');
-  formTemizle(); tabDegistir('gecmis');
 }
 
 async function gecmisYukle() {
