@@ -402,13 +402,15 @@ async function uygulamaBaslat(user) {
     var al = document.getElementById('admin-link');
     if (al) al.style.display = 'flex';
   }
-  // Profil async yukle
-  fetch(SUPABASE_URL+'/rest/v1/profiller?id=eq.'+user.id+'&limit=1',{headers:{'apikey':SUPABASE_KEY}})
+  // Profil + bayi async yukle
+  fetch(SUPABASE_URL+'/rest/v1/profiller?id=eq.'+user.id+'&select=*,bayiler(id,ad)&limit=1',{headers:{'apikey':SUPABASE_KEY}})
     .then(function(r){return r.json();}).then(function(arr){
       if(arr && arr[0]){
-        mevcutKullanici = Object.assign({},user,arr[0]);
+        var p = arr[0];
+        mevcutKullanici = Object.assign({},user,p);
+        if(p.bayiler) { mevcutKullanici.bayi_adi = p.bayiler.ad; mevcutKullanici.bayi_id = p.bayiler.id; }
         var btn = document.getElementById('profil-btn');
-        if(btn && arr[0].ad_soyad) btn.textContent = arr[0].ad_soyad.charAt(0).toUpperCase();
+        if(btn && p.ad_soyad) btn.textContent = p.ad_soyad.charAt(0).toUpperCase();
       }
     }).catch(function(){});
   haritaBaslat();
@@ -696,6 +698,8 @@ async function ziyaretKaydet() {
       su_ph:parseFloat(document.getElementById('f-su-ph').value)||null,
       su_ppm:parseFloat(document.getElementById('f-su-ppm').value)||null,
       su_ec:parseFloat(document.getElementById('f-su-ec').value)||null,
+      bayi_id:mevcutKullanici.bayi_id||null,
+      bayi_adi:mevcutKullanici.bayi_adi||null,
     };
     var resp=await Promise.race([
       fetch(SUPABASE_URL+'/rest/v1/ziyaretler',{
