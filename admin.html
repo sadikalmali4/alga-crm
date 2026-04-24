@@ -99,13 +99,13 @@
     <button id="tabBtn-raporlar" class="btn btn-white aktif" onclick="tabGec('raporlar')">📊 Raporlar</button>
     <button id="tabBtn-takipler" class="btn btn-white" onclick="tabGec('takipler')">🔄 Takipler</button>
     <button id="tabBtn-bayiler" class="btn btn-white" onclick="tabGec('bayiler')">🏢 Bayiler</button>
-    <button id="tabBtn-kullanicilar" class="btn btn-white" onclick="tabGec('kullanicilar')">👤 Satıcılar</button>
+    <button id="tabBtn-kullanicilar" class="btn btn-white edit-only" onclick="tabGec('kullanicilar')">👤 Satıcılar</button>
   </div>
   <div class="header-right">
     <span class="readonly-badge">👁 Salt Okunur Mod</span>
     <span id="rol-goster" style="font-size:12px;color:rgba(255,255,255,.7);"></span>
     <a href="/alga-crm/harita.html" class="btn btn-white">← Haritaya Dön</a>
-    <button class="btn btn-white" onclick="csvIndir()">⬇ CSV İndir</button>
+    <button class="btn btn-white edit-only" onclick="csvIndir()">⬇ CSV İndir</button>
     <button class="btn btn-white" onclick="cikisYap()">Çıkış</button>
   </div>
 </div>
@@ -374,10 +374,8 @@ sb.auth.getSession().then(async function(res){
     }
   } catch(e){ _mevcutRol = 'admin'; }
 
-  // Satıcılar admin paneline giremez
-  if(_mevcutRol === 'satici'){
-    window.location.href='/alga-crm/harita.html'; return;
-  }
+  // Tüm roller rapor görebilir — sadece admin düzenleyebilir
+  // (satici dahil herkes girebilir, salt-okunur modda)
 
   // Salt okunur mod uygula
   if(_mevcutRol !== 'admin'){
@@ -890,13 +888,27 @@ async function yeniSaticiEkle(){
       body:JSON.stringify({email:email, password:tempSifre})
     });
     var authD = await authR.json();
+    // "Zaten kayıtlı" hatası → sadece davet maili gönder
     if(!authR.ok){
+      var errMsg = authD.msg||authD.message||authD.error_description||'';
+      if(errMsg.toLowerCase().includes('already') || errMsg.toLowerCase().includes('registered')){
+        msg.textContent='Davet e-postası gönderiliyor...';
+        await sb.auth.resetPasswordForEmail(email, {
+          redirectTo: 'https://sadikalmali4.github.io/alga-crm/harita.html'
+        });
+        msg.style.color='#f59e0b';
+        msg.innerHTML='⚠️ <strong>'+email+'</strong> zaten sistemde kayıtlı.<br>'+
+          '<small style="color:#6b7280">📧 Şifre belirleme e-postası gönderildi. '+
+          'Rolünü listeden güncelleyebilirsiniz.</small>';
+        await saticiYonetimYukle();
+        return;
+      }
       msg.style.color='#e02424';
-      msg.textContent='Hata: '+(authD.msg||authD.message||authD.error_description||JSON.stringify(authD));
+      msg.textContent='Hata: '+errMsg;
       return;
     }
     var userId = (authD.user ? authD.user.id : null) || authD.id;
-    if(!userId){ msg.style.color='#e02424'; msg.textContent='ID alınamadı. E-posta zaten kayıtlı olabilir.'; return; }
+    if(!userId){ msg.style.color='#e02424'; msg.textContent='ID alınamadı.'; return; }
 
     // 2. Profil kaydı oluştur (email kolonu profiller tablosunda YOK — auth.users'da)
     var profilBody = {id:userId, ad_soyad:ad, rol:rol};
