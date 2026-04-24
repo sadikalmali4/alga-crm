@@ -43,7 +43,20 @@
 
   /* STAT KARTLAR */
   .stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:22px;}
-  .stat-kart{background:white;border-radius:12px;padding:16px 18px;box-shadow:var(--shadow);border:1px solid var(--gray200);}
+  .stat-kart{background:white;border-radius:12px;padding:16px 18px;box-shadow:var(--shadow);border:1px solid var(--gray200);transition:all .15s;cursor:pointer;user-select:none;}
+  .stat-kart:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.12);}
+  .stat-kart.aktif-filtre{border-width:2px;box-shadow:0 0 0 3px rgba(122,181,40,.25);}
+
+  /* YETKİ SİSTEMİ: salt-okunur modda düzenleme alanları gizlenir */
+  body.salt-okunur .edit-only { display: none !important; }
+  body.salt-okunur .readonly-badge { display: inline-flex !important; }
+  .readonly-badge { display:none;background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;align-items:center;gap:5px; }
+  .rol-badge-admin{background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;}
+  .rol-badge-yonetim{background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;}
+  .rol-badge-satis_muduru{background:#f3e8ff;color:#6b21a8;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;}
+  .rol-badge-satici{background:#f1f5f9;color:#475569;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;}
+  .inline-edit-alan { border:none;background:transparent;font-size:inherit;font-weight:inherit;color:inherit;width:100%;cursor:pointer; }
+  .inline-edit-alan:focus { background:#f0f7e6;border:1.5px solid #7ab528;border-radius:6px;padding:2px 6px;cursor:text;outline:none; }
   .stat-sayi{font-size:28px;font-weight:700;line-height:1;}
   .stat-etiket{font-size:12px;color:var(--gray400);margin-top:5px;}
   .stat-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;}
@@ -86,9 +99,11 @@
     <button id="tabBtn-raporlar" class="btn btn-white aktif" onclick="tabGec('raporlar')">📊 Raporlar</button>
     <button id="tabBtn-takipler" class="btn btn-white" onclick="tabGec('takipler')">🔄 Takipler</button>
     <button id="tabBtn-bayiler" class="btn btn-white" onclick="tabGec('bayiler')">🏢 Bayiler</button>
-    <button id="tabBtn-kullanicilar" class="btn btn-white" onclick="tabGec('kullanicilar')">👥 Kullanıcılar</button>
+    <button id="tabBtn-kullanicilar" class="btn btn-white" onclick="tabGec('kullanicilar')">👤 Satıcılar</button>
   </div>
   <div class="header-right">
+    <span class="readonly-badge">👁 Salt Okunur Mod</span>
+    <span id="rol-goster" style="font-size:12px;color:rgba(255,255,255,.7);"></span>
     <a href="/alga-crm/harita.html" class="btn btn-white">← Haritaya Dön</a>
     <button class="btn btn-white" onclick="csvIndir()">⬇ CSV İndir</button>
     <button class="btn btn-white" onclick="cikisYap()">Çıkış</button>
@@ -128,14 +143,14 @@
       </select>
     </div>
     <div class="f-grup">
-      <label>Bayi</label>
-      <select id="f-bayi" onchange="raporYukle()">
-        <option value="">Tüm Bayiler</option>
+      <label>Bölge</label>
+      <select id="f-bolge" onchange="raporFiltrele()">
+        <option value="">Tüm Bölgeler</option>
       </select>
     </div>
     <div class="f-grup">
       <label>İstasyon ara</label>
-      <input type="text" id="f-ist" placeholder="İsim..." oninput="tabloFiltrele()"/>
+      <input type="text" id="f-ist" placeholder="İsim, satıcı, bayi..." oninput="raporFiltrele()"/>
     </div>
     <button class="btn btn-green" onclick="buHaftaFiltrele()">Bu Hafta</button>
     <button class="btn btn-outline" onclick="buAyFiltrele()">Bu Ay</button>
@@ -144,14 +159,15 @@
 
   <!-- STAT KARTLAR -->
   <div class="stat-grid" id="stat-grid">
-    <div class="stat-kart"><div class="stat-sayi" id="s-toplam" style="color:var(--green-dark)">—</div><div class="stat-etiket">Toplam Ziyaret</div></div>
-    <div class="stat-kart"><div class="stat-sayi" id="s-sicak" style="color:#ef4444">—</div><div class="stat-etiket"><span class="stat-dot" style="background:#ef4444"></span>Sıcak</div></div>
-    <div class="stat-kart"><div class="stat-sayi" id="s-anlasma" style="color:#f59e0b">—</div><div class="stat-etiket"><span class="stat-dot" style="background:#f59e0b"></span>Anlaştı</div></div>
-    <div class="stat-kart"><div class="stat-sayi" id="s-teklif" style="color:#8b5cf6">—</div><div class="stat-etiket"><span class="stat-dot" style="background:#8b5cf6"></span>Teklif</div></div>
-    <div class="stat-kart"><div class="stat-sayi" id="s-takipte" style="color:#f97316">—</div><div class="stat-etiket"><span class="stat-dot" style="background:#f97316"></span>Takipte</div></div>
-    <div class="stat-kart"><div class="stat-sayi" id="s-foto" style="color:var(--blue)">—</div><div class="stat-etiket">Fotoğraflı</div></div>
-    <div class="stat-kart"><div class="stat-sayi" id="s-katalog" style="color:var(--green)">—</div><div class="stat-etiket">Katalog Bırakıldı</div></div>
-    <div class="stat-kart"><div class="stat-sayi" id="s-teklif-top" style="color:#8b5cf6">—</div><div class="stat-etiket">Toplam Teklif (₺)</div></div>
+    <div class="stat-kart" id="sk-toplam" onclick="statFiltrele(null)" title="Tüm ziyaretler"><div class="stat-sayi" id="s-toplam" style="color:var(--green-dark)">—</div><div class="stat-etiket">Toplam Ziyaret</div></div>
+    <div class="stat-kart" id="sk-sicak" onclick="statFiltrele('sicak')" title="Sıcak ziyaretler"><div class="stat-sayi" id="s-sicak" style="color:#ef4444">—</div><div class="stat-etiket"><span class="stat-dot" style="background:#ef4444"></span>Sıcak</div></div>
+    <div class="stat-kart" id="sk-anlasma" onclick="statFiltrele('anlasma')" title="Anlaşılan ziyaretler"><div class="stat-sayi" id="s-anlasma" style="color:#22c55e">—</div><div class="stat-etiket"><span class="stat-dot" style="background:#22c55e"></span>Anlaştı</div></div>
+    <div class="stat-kart" id="sk-teklif" onclick="statFiltrele('teklif')" title="Teklif verilen ziyaretler"><div class="stat-sayi" id="s-teklif" style="color:#8b5cf6">—</div><div class="stat-etiket"><span class="stat-dot" style="background:#8b5cf6"></span>Teklif</div></div>
+    <div class="stat-kart" id="sk-takipte" onclick="statFiltrele('takipte')" title="Takipte olan ziyaretler"><div class="stat-sayi" id="s-takipte" style="color:#f97316">—</div><div class="stat-etiket"><span class="stat-dot" style="background:#f97316"></span>Takipte</div></div>
+    <div class="stat-kart" id="sk-kararsiz" onclick="statFiltrele('kararsiz')" title="Kararsız ziyaretler"><div class="stat-sayi" id="s-kararsiz" style="color:#6b7280">—</div><div class="stat-etiket"><span class="stat-dot" style="background:#6b7280"></span>Kararsız</div></div>
+    <div class="stat-kart" id="sk-foto" onclick="statFiltrele('foto')" title="Fotoğraflı ziyaretler"><div class="stat-sayi" id="s-foto" style="color:var(--blue)">—</div><div class="stat-etiket">📷 Fotoğraflı</div></div>
+    <div class="stat-kart" id="sk-katalog" onclick="statFiltrele('katalog')" title="Katalog bırakılan ziyaretler"><div class="stat-sayi" id="s-katalog" style="color:var(--green)">—</div><div class="stat-etiket">📋 Katalog Bırakıldı</div></div>
+    <div class="stat-kart" style="cursor:default;"><div class="stat-sayi" id="s-teklif-top" style="color:#8b5cf6;font-size:20px;">—</div><div class="stat-etiket">💰 Toplam Teklif (₺)</div></div>
   </div>
 
   <!-- GRAFİKLER -->
@@ -179,8 +195,8 @@
       <table>
         <thead>
           <tr>
-            <th>Tarih</th><th>Satıcı</th><th>İstasyon</th><th>Marka</th>
-            <th>Ürünler</th><th>Sonuç</th><th>Teklif (₺)</th><th>Not</th>
+            <th>Tarih</th><th>Satıcı</th><th>İstasyon</th><th>Bayi</th>
+            <th>Sonuç</th><th>Teklif (₺)</th><th>Not</th><th style="text-align:center">Detay</th>
           </tr>
         </thead>
         <tbody id="ziyaret-tbody"><tr><td colspan="8" class="bos">Yükleniyor...</td></tr></tbody>
@@ -202,16 +218,22 @@
 <!-- TAB: BAYİLER -->
 <div id="tab-bayiler" style="display:none;">
   <!-- Yeni bayi ekle -->
-  <div class="tablo-kart" style="margin-bottom:16px;">
+  <div class="tablo-kart edit-only" style="margin-bottom:16px;">
     <div class="tablo-baslik">Yeni Bayi Ekle</div>
     <div style="padding:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
       <div class="f-grup">
         <label>Bayi Adı *</label>
-        <input type="text" id="yeni-bayi-ad" placeholder="Bayi adı" style="width:200px;"/>
+        <input type="text" id="yeni-bayi-ad" placeholder="Bayi adı" style="width:180px;"/>
       </div>
       <div class="f-grup">
-        <label>İl</label>
-        <input type="text" id="yeni-bayi-il" placeholder="İstanbul" style="width:120px;"/>
+        <label>Bölge</label>
+        <select id="yeni-bayi-bolge" style="padding:6px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;width:160px;">
+          <option value="">-- Bölge seç --</option>
+        </select>
+      </div>
+      <div class="f-grup">
+        <label>İl/Şehir</label>
+        <input type="text" id="yeni-bayi-il" placeholder="İstanbul" style="width:110px;"/>
       </div>
       <button class="btn btn-green" onclick="yeniBayiEkle()">+ Ekle</button>
     </div>
@@ -221,32 +243,69 @@
     <div class="tablo-baslik">Mevcut Bayiler <small id="bayi-sayi"></small></div>
     <div style="overflow-x:auto;">
       <table>
-        <thead><tr><th>Bayi Adı</th><th>İl</th><th>Yetkili</th><th>İşlem</th></tr></thead>
-        <tbody id="bayi-tbody"><tr><td colspan="4" class="bos">Yükleniyor...</td></tr></tbody>
+        <thead><tr><th>Bayi Adı</th><th>Bölge</th><th>İl/Şehir</th><th>Yetkili</th><th>İşlem</th></tr></thead>
+        <tbody id="bayi-tbody"><tr><td colspan="5" class="bos">Yükleniyor...</td></tr></tbody>
       </table>
     </div>
   </div>
 </div>
 
-<!-- TAB: KULLANICILAR -->
+<!-- TAB: SATICILAR -->
 <div id="tab-kullanicilar" style="display:none;">
+
+  <!-- Yeni satıcı ekleme formu -->
+  <div class="tablo-kart edit-only" style="margin-bottom:16px;">
+    <div class="tablo-baslik">➕ Yeni Satıcı Ekle</div>
+    <div style="padding:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:11px;font-weight:600;color:#6b7280;">AD SOYAD *</label>
+        <input id="ns-ad" placeholder="Ahmet Yılmaz" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;width:160px;"/>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:11px;font-weight:600;color:#6b7280;">E-POSTA *</label>
+        <input id="ns-email" type="email" placeholder="ahmet@alga.com.tr" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;width:180px;"/>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:11px;font-weight:600;color:#6b7280;">GİRİŞ ŞİFRESİ</label>
+        <input id="ns-sifre" type="text" value="12134" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;width:90px;"/>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:11px;font-weight:600;color:#6b7280;">BAYİ</label>
+        <select id="ns-bayi" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;width:150px;">
+          <option value="">-- Bayi seç --</option>
+        </select>
+      </div>
+      <button onclick="yeniSaticiEkle()" style="padding:8px 20px;background:#7ab528;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">+ Ekle</button>
+    </div>
+    <div id="ns-mesaj" style="padding:0 16px 12px;font-size:13px;"></div>
+  </div>
+
+  <!-- Mevcut satıcılar tablosu -->
   <div class="tablo-kart">
-    <div class="tablo-baslik">Satıcı — Bayi Ataması <small>Her satıcıya bir bayi atayın</small></div>
+    <div class="tablo-baslik">👤 Mevcut Satıcılar</div>
     <div style="overflow-x:auto;">
       <table>
-        <thead><tr><th>Ad Soyad</th><th>E-posta</th><th>Mevcut Bayi</th><th>Bayi Ata</th></tr></thead>
-        <tbody id="kullanici-tbody"><tr><td colspan="4" class="bos">Yükleniyor...</td></tr></tbody>
+        <thead>
+          <tr>
+            <th>Ad Soyad</th>
+            <th>E-posta</th>
+            <th>Rol</th>
+            <th>Bayi</th>
+            <th>Bayi Değiştir</th>
+            <th class="edit-only">İşlem</th>
+          </tr>
+        </thead>
+        <tbody id="satici-yonetim-tbody"><tr><td colspan="6" class="bos">Yükleniyor...</td></tr></tbody>
       </table>
     </div>
   </div>
-  <div class="tablo-kart" style="margin-top:16px;">
-    <div class="tablo-baslik">Yeni Satıcı Nasıl Eklenir?</div>
-    <div style="padding:16px;font-size:13px;color:#4b5563;line-height:1.8;">
-      1. <strong>Supabase</strong> → <strong>Authentication</strong> → <strong>Users</strong> → <strong>Invite user</strong><br>
-      2. Satıcının e-posta adresini gir → davet gönder<br>
-      3. Satıcı e-postasındaki linke tıklar, şifre belirler<br>
-      4. İlk girişten sonra buradan bayi ataması yapılır
-    </div>
+</div>
+
+<!-- ZİYARET DETAY MODALI -->
+<div id="detay-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:white;border-radius:16px;max-width:640px;width:100%;max-height:92vh;overflow-y:auto;padding:28px 28px 24px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <button onclick="document.getElementById('detay-modal').style.display='none'" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:26px;cursor:pointer;color:#9ca3af;line-height:1;">×</button>
+    <div id="detay-icerik"></div>
   </div>
 </div>
 
@@ -260,6 +319,15 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 var tumVeriler = [];
 var chartSatici = null, chartSonuc = null;
 var _authToken = null;
+var _mevcutRol = null;
+var _mevcutAd = '';
+
+var ROL_ETIKET = {
+  admin: '🔑 Admin',
+  yonetim: '👔 Yönetim',
+  satis_muduru: '📊 Satış Müdürü',
+  satici: '🚗 Satıcı'
+};
 
 // Tüm fetch'lerde kullanılacak header yardımcısı
 function hdrs(extra){
@@ -285,9 +353,39 @@ setTimeout(function(){
   if(ov) ov.classList.remove('aktif');
 },5000);
 
-sb.auth.getSession().then(function(res){
+sb.auth.getSession().then(async function(res){
   if(!res.data||!res.data.session){ window.location.href='/alga-crm/harita.html'; return; }
   _authToken = res.data.session.access_token;
+  var uid = res.data.session.user.id;
+
+  // Kullanıcı rolünü çek
+  try {
+    var rp = await fetch(SUPABASE_URL+'/rest/v1/profiller?id=eq.'+uid+'&select=rol,ad_soyad&limit=1',{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+_authToken}
+    });
+    var pa = await rp.json();
+    if(pa && pa[0]){
+      _mevcutRol = pa[0].rol || 'satici';
+      _mevcutAd = pa[0].ad_soyad || '';
+    } else {
+      _mevcutRol = 'admin'; // Profili olmayan kullanıcı (örn. sadika) → admin say
+    }
+  } catch(e){ _mevcutRol = 'admin'; }
+
+  // Satıcılar admin paneline giremez
+  if(_mevcutRol === 'satici'){
+    window.location.href='/alga-crm/harita.html'; return;
+  }
+
+  // Salt okunur mod uygula
+  if(_mevcutRol !== 'admin'){
+    document.body.classList.add('salt-okunur');
+  }
+
+  // Başlıkta rol göster
+  var rolEl = document.getElementById('rol-goster');
+  if(rolEl) rolEl.textContent = (_mevcutAd||res.data.session.user.email||'') + ' · ' + (ROL_ETIKET[_mevcutRol]||_mevcutRol);
+
   baslat();
 }).catch(function(e){
   console.error('Auth hatasi:',e);
@@ -311,11 +409,18 @@ async function baslat(){
 }
 
 async function bayiListesiYukle(){
-  var r = await fetch(SUPABASE_URL+'/rest/v1/bayiler?select=id,ad&order=ad',{headers:hdrs()});
+  var r = await fetch(SUPABASE_URL+'/rest/v1/bayiler?select=id,ad,il,bolge,yetkili&order=ad',{headers:hdrs()});
   var arr = await r.json();
   tumBayiler = Array.isArray(arr)?arr:[];
-  var sel = document.getElementById('f-bayi');
-  if(sel){ sel.innerHTML='<option value="">Tüm Bayiler</option>'+tumBayiler.map(function(b){return '<option value="'+b.id+'">'+b.ad+'</option>';}).join(''); }
+  // f-bolge dolur
+  var bolgeSel = document.getElementById('f-bolge');
+  if(bolgeSel){
+    var bolgeler = [];
+    tumBayiler.forEach(function(b){ if(b.bolge && bolgeler.indexOf(b.bolge)<0) bolgeler.push(b.bolge); });
+    bolgeler.sort();
+    bolgeSel.innerHTML = '<option value="">Tüm Bölgeler</option>' +
+      bolgeler.map(function(bg){ return '<option value="'+bg+'">'+bg+'</option>'; }).join('');
+  }
 }
 
 async function saticiListesiYukle(){
@@ -335,8 +440,6 @@ async function raporYukle(){
     var bit = document.getElementById('f-bit').value;
     var satici = document.getElementById('f-satici').value;
     var sonuc = document.getElementById('f-sonuc').value;
-    var bayiEl = document.getElementById('f-bayi');
-    var bayi = bayiEl ? bayiEl.value : '';
 
     var BASE = SUPABASE_URL+'/rest/v1';
     var url = BASE+'/ziyaretler?select=*&order=created_at.desc&limit=2000';
@@ -344,7 +447,6 @@ async function raporYukle(){
     if(bit) url += '&created_at=lte.'+bit+'T23:59:59';
     if(satici) url += '&kullanici_id=eq.'+satici;
     if(sonuc) url += '&sonuc=eq.'+sonuc;
-    if(bayi) url += '&bayi_id=eq.'+bayi;
 
     var resp = await Promise.race([
       fetch(url,{headers:hdrs()}),
@@ -360,10 +462,10 @@ async function raporYukle(){
     if(Array.isArray(profArr)) profArr.forEach(function(p){profMap[p.id]=p.ad_soyad;});
     tumVeriler.forEach(function(z){z._satici_ad = profMap[z.kullanici_id]||'Bilinmiyor';});
 
-    statGuncelle();
+    statGuncelle(tumVeriler);
     grafikGuncelle();
     saticiTabloGuncelle();
-    tabloGuncelle(tumVeriler);
+    raporFiltrele();
   } catch(e) {
     console.error('raporYukle hata:', e);
   } finally {
@@ -371,17 +473,62 @@ async function raporYukle(){
   }
 }
 
-function statGuncelle(){
-  var v = tumVeriler;
+var _aktifStatFiltre = null;
+
+function statGuncelle(v){
+  v = v || tumVeriler;
   document.getElementById('s-toplam').textContent = v.length;
   document.getElementById('s-sicak').textContent = v.filter(function(x){return x.sonuc==='sicak';}).length;
   document.getElementById('s-anlasma').textContent = v.filter(function(x){return x.sonuc==='anlasma';}).length;
   document.getElementById('s-teklif').textContent = v.filter(function(x){return x.sonuc==='teklif';}).length;
   document.getElementById('s-takipte').textContent = v.filter(function(x){return x.sonuc==='takipte';}).length;
+  document.getElementById('s-kararsiz').textContent = v.filter(function(x){return x.sonuc==='kararsiz';}).length;
   document.getElementById('s-foto').textContent = v.filter(function(x){return !!x.foto_url;}).length;
   document.getElementById('s-katalog').textContent = v.filter(function(x){return x.katalog_birakildi;}).length;
   var topTeklif = v.reduce(function(s,x){return s+(x.teklif_tutari||0);},0);
-  document.getElementById('s-teklif-top').textContent = topTeklif>0?topTeklif.toLocaleString('tr-TR')+'₺':'—';
+  document.getElementById('s-teklif-top').textContent = topTeklif>0?topTeklif.toLocaleString('tr-TR')+' ₺':'—';
+}
+
+function statFiltrele(tur){
+  // Aynı karta tekrar tıklanırsa filtre kalksin
+  if(_aktifStatFiltre === tur){ tur = null; }
+  _aktifStatFiltre = tur;
+
+  // Aktif kartı vurgula
+  ['toplam','sicak','anlasma','teklif','takipte','kararsiz','foto','katalog'].forEach(function(k){
+    var el = document.getElementById('sk-'+k);
+    if(el) el.classList.remove('aktif-filtre');
+  });
+  if(tur){
+    var aktifId = tur === 'foto' ? 'sk-foto' : tur === 'katalog' ? 'sk-katalog' : 'sk-'+tur;
+    var aktifEl = document.getElementById(aktifId);
+    if(aktifEl) aktifEl.classList.add('aktif-filtre');
+  }
+
+  // Mevcut bölge/arama filtresinin üzerine stat filtresini uygula
+  var bolge = document.getElementById('f-bolge').value;
+  var aranan = (document.getElementById('f-ist').value||'').toLowerCase();
+  var filtre = tumVeriler;
+  if(bolge){
+    var bolgedekiBayiler = tumBayiler.filter(function(b){ return b.bolge===bolge; }).map(function(b){ return b.id; });
+    filtre = filtre.filter(function(z){ return bolgedekiBayiler.indexOf(z.bayi_id)>=0; });
+  }
+  if(aranan){
+    filtre = filtre.filter(function(z){
+      return (z.istasyon_adi||'').toLowerCase().includes(aranan)||
+        (z._satici_ad||'').toLowerCase().includes(aranan)||
+        (z.bayi_adi||'').toLowerCase().includes(aranan);
+    });
+  }
+  if(tur === 'foto') filtre = filtre.filter(function(z){ return !!z.foto_url; });
+  else if(tur === 'katalog') filtre = filtre.filter(function(z){ return !!z.katalog_birakildi; });
+  else if(tur) filtre = filtre.filter(function(z){ return z.sonuc===tur; });
+
+  tabloGuncelle(filtre);
+
+  // Tabloya kaydır
+  var tbl = document.getElementById('ziyaret-tbody');
+  if(tbl) tbl.closest('.tablo-kart').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 function grafikGuncelle(){
@@ -442,34 +589,91 @@ function saticiTabloGuncelle(){
 }
 
 function tabloGuncelle(veriler){
-  document.getElementById('tablo-sayi').textContent=veriler.length+' kayıt';
+  document.getElementById('tablo-sayi').textContent = veriler.length + ' kayıt';
   if(!veriler.length){ document.getElementById('ziyaret-tbody').innerHTML='<tr><td colspan="8" class="bos">Kayıt bulunamadı</td></tr>'; return; }
-  document.getElementById('ziyaret-tbody').innerHTML=veriler.slice(0,500).map(function(z){
-    var tarih=new Date(z.created_at).toLocaleDateString('tr-TR');
-    var ad=z._satici_ad||'—';
-    var badge=BADGE[z.sonuc]||''; var lbl=LBL[z.sonuc]||z.sonuc||'—';
-    return '<tr>'+
-      '<td style="white-space:nowrap">'+tarih+'</td>'+
-      '<td>'+ad+'</td>'+
-      '<td style="max-width:200px;word-break:break-word;">'+z.istasyon_adi+'</td>'+
-      '<td>'+( z.istasyon_marka||'—')+'</td>'+
-      '<td style="max-width:180px;font-size:12px;color:#4b5563;">'+( z.urun||'—')+'</td>'+
+  document.getElementById('ziyaret-tbody').innerHTML = veriler.slice(0,500).map(function(z){
+    var tarih = new Date(z.created_at).toLocaleDateString('tr-TR');
+    var ad = z._satici_ad || '—';
+    var badge = BADGE[z.sonuc]||''; var lbl = LBL[z.sonuc]||z.sonuc||'—';
+    var bayi = tumBayiler.find(function(b){ return b.id === z.bayi_id; });
+    var bayiAd = bayi ? bayi.ad : (z.bayi_adi||'—');
+    return '<tr style="cursor:pointer;transition:background .15s;" onmouseover="this.style.background=\'#f0f7e6\'" onmouseout="this.style.background=\'\'" onclick="ziyaretDetayAc(\'' + z.id + '\')">'+
+      '<td style="white-space:nowrap;font-size:12px;">'+tarih+'</td>'+
+      '<td style="font-size:13px;">'+ad+'</td>'+
+      '<td style="max-width:180px;word-break:break-word;font-size:13px;">'+( z.istasyon_adi||'—')+'</td>'+
+      '<td style="font-size:12px;color:#6b7280;">'+bayiAd+'</td>'+
       '<td><span class="badge '+badge+'">'+lbl+'</span></td>'+
-      '<td>'+(z.teklif_tutari?z.teklif_tutari.toLocaleString('tr-TR')+' ₺':'—')+'</td>'+
-      '<td style="max-width:160px;font-size:12px;color:#6b7280;">'+(z.not_metni?z.not_metni.substring(0,80)+(z.not_metni.length>80?'...':''):'—')+'</td>'+
-      '</tr>';
+      '<td style="font-size:13px;">'+(z.teklif_tutari ? z.teklif_tutari.toLocaleString('tr-TR')+' ₺':'—')+'</td>'+
+      '<td style="max-width:150px;font-size:11px;color:#6b7280;">'+(z.not_metni ? z.not_metni.substring(0,60)+(z.not_metni.length>60?'...':''):'—')+'</td>'+
+      '<td style="text-align:center;font-size:16px;">👁</td>'+
+    '</tr>';
   }).join('');
 }
 
-function tabloFiltrele(){
-  var aranan=document.getElementById('f-ist').value.toLowerCase();
-  if(!aranan){ tabloGuncelle(tumVeriler); return; }
-  var filtre=tumVeriler.filter(function(z){
-    return (z.istasyon_adi||'').toLowerCase().includes(aranan)||
-      (z.istasyon_marka||'').toLowerCase().includes(aranan)||
-      (z.urun||'').toLowerCase().includes(aranan);
-  });
+function raporFiltrele(){
+  var bolge = document.getElementById('f-bolge').value;
+  var aranan = (document.getElementById('f-ist').value||'').toLowerCase();
+  var filtre = tumVeriler;
+  if(bolge){
+    var bolgedekiBayiler = tumBayiler.filter(function(b){ return b.bolge === bolge; }).map(function(b){ return b.id; });
+    filtre = filtre.filter(function(z){ return bolgedekiBayiler.indexOf(z.bayi_id) >= 0; });
+  }
+  if(aranan){
+    filtre = filtre.filter(function(z){
+      return (z.istasyon_adi||'').toLowerCase().includes(aranan) ||
+        (z.istasyon_marka||'').toLowerCase().includes(aranan) ||
+        (z._satici_ad||'').toLowerCase().includes(aranan) ||
+        (z.bayi_adi||'').toLowerCase().includes(aranan) ||
+        (z.urun||'').toLowerCase().includes(aranan);
+    });
+  }
+  statGuncelle(filtre);
   tabloGuncelle(filtre);
+}
+
+function ziyaretDetayAc(id){
+  var z = tumVeriler.find(function(x){ return x.id === id; });
+  if(!z) return;
+  var bayi = tumBayiler.find(function(b){ return b.id === z.bayi_id; });
+  var bayiAd = bayi ? bayi.ad : (z.bayi_adi||'—');
+  var bolge = bayi ? (bayi.bolge||'—') : '—';
+  var badge = BADGE[z.sonuc]||''; var lbl = LBL[z.sonuc]||z.sonuc||'—';
+  var tarih = new Date(z.created_at).toLocaleString('tr-TR');
+  // Admin için istasyon adı anlık düzenlenebilir
+  var istasyonBaslik = (_mevcutRol === 'admin')
+    ? '<input class="inline-edit-alan" value="'+(z.istasyon_adi||'')+'" style="font-size:17px;font-weight:700;color:#1f2937;padding-right:30px;display:block;width:calc(100% - 40px);" '+
+      'title="Adı düzenlemek için tıklayın" placeholder="İstasyon adı" '+
+      'onblur="istasyonAdiKaydet(\''+z.id+'\',this.value)" '+
+      'onkeydown="if(event.key===\'Enter\'){this.blur();}" />'
+    : '<h3 style="margin:0 0 4px;font-size:17px;color:#1f2937;padding-right:30px;">'+(z.istasyon_adi||'—')+'</h3>';
+
+  var html = istasyonBaslik +
+    '<p style="margin:0 0 18px;font-size:12px;color:#9ca3af;">'+tarih+(
+      _mevcutRol==='admin' ? ' <span style="color:#7ab528;font-size:11px;">✏️ İstasyon adını düzenleyebilirsiniz</span>' : ''
+    )+'</p>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">';
+  function dkart(b,d){ return '<div style="background:#f9fafb;border-radius:8px;padding:10px 12px;"><div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">'+b+'</div><div style="font-size:13px;color:#1f2937;font-weight:500;">'+d+'</div></div>'; }
+  html += dkart('Satıcı', z._satici_ad||'—');
+  html += dkart('Bayi', bayiAd);
+  html += dkart('Bölge', bolge);
+  html += dkart('Marka', z.istasyon_marka||'—');
+  html += dkart('Sonuç', '<span class="badge '+badge+'">'+lbl+'</span>');
+  if(z.teklif_tutari) html += dkart('Teklif', z.teklif_tutari.toLocaleString('tr-TR')+' ₺');
+  if(z.takip_tarihi) html += dkart('Takip', z.takip_tarihi);
+  if(z.urun) html += dkart('Ürünler', z.urun);
+  if(z.yetkili_adi) html += dkart('Yetkili', z.yetkili_adi);
+  if(z.telefon) html += dkart('Telefon', '<a href="tel:'+z.telefon+'" style="color:#7ab528;text-decoration:none;">📞 '+z.telefon+'</a>');
+  if(z.email) html += dkart('E-posta', '<a href="mailto:'+z.email+'" style="color:#7ab528;text-decoration:none;">✉️ '+z.email+'</a>');
+  if(z.su_ppm) html += dkart('Su PPM', z.su_ppm);
+  if(z.su_ph) html += dkart('Su pH', z.su_ph);
+  if(z.fiyat_otomatik) html += dkart('Fiyat Oto.', z.fiyat_otomatik+' ₺');
+  if(z.fiyat_selfservis) html += dkart('Fiyat Self', z.fiyat_selfservis+' ₺');
+  html += '</div>';
+  if(z.katalog_birakildi) html += '<div style="background:#f0f7e6;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;color:#5a8a1a;">✓ Katalog bırakıldı</div>';
+  if(z.not_metni) html += '<div style="background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:12px;font-size:13px;color:#4b5563;line-height:1.6;"><strong style="color:#1f2937;">Not: </strong>'+z.not_metni+'</div>';
+  if(z.foto_url) html += '<img src="'+z.foto_url+'" style="width:100%;max-height:220px;object-fit:cover;border-radius:10px;cursor:pointer;" onclick="window.open(this.src,\'_blank\')" title="Büyütmek için tıklayın"/>';
+  document.getElementById('detay-icerik').innerHTML = html;
+  document.getElementById('detay-modal').style.display = 'flex';
 }
 
 function buHaftaFiltrele(){
@@ -490,6 +694,8 @@ function filtreleriSifirla(){
   document.getElementById('f-bit').value='';
   document.getElementById('f-satici').value='';
   document.getElementById('f-sonuc').value='';
+  document.getElementById('f-bolge').value='';
+  document.getElementById('f-ist').value='';
   raporYukle();
 }
 
@@ -523,31 +729,39 @@ async function bayileriYukle(){
   bayiTablosunuGuncelle();
 }
 
+var BOLGELER = ['Marmara','İstanbul Avrupa','İstanbul Anadolu','Ege','İzmir','İç Anadolu','Ankara','Akdeniz','Karadeniz','Doğu Anadolu','Güneydoğu Anadolu'];
+
 function bayiTablosunuGuncelle(){
   var tbody = document.getElementById('bayi-tbody');
   if(!tumBayiler.length){ tbody.innerHTML='<tr><td colspan="5" class="bos">Henüz bayi yok</td></tr>'; return; }
+  var bolgeOps = '<option value="">-- Bölge --</option>'+BOLGELER.map(function(bg){ return '<option value="'+bg+'">'+bg+'</option>'; }).join('');
   tbody.innerHTML = tumBayiler.map(function(b){
     return '<tr id="bayi-row-'+b.id+'">'+
       '<td><span id="bayi-ad-'+b.id+'">'+b.ad+'</span>'+
-      '<input id="bayi-ad-input-'+b.id+'" value="'+b.ad+'" style="display:none;padding:5px 8px;border:1.5px solid #7ab528;border-radius:6px;font-size:13px;width:160px;"/></td>'+
+        '<input id="bayi-ad-input-'+b.id+'" value="'+b.ad+'" style="display:none;padding:5px 8px;border:1.5px solid #7ab528;border-radius:6px;font-size:13px;width:150px;"/></td>'+
+      '<td><span id="bayi-bolge-'+b.id+'" style="background:#eef2ff;padding:2px 8px;border-radius:10px;font-size:12px;color:#6366f1;">'+(b.bolge||'—')+'</span>'+
+        '<select id="bayi-bolge-input-'+b.id+'" style="display:none;padding:5px 8px;border:1.5px solid #7ab528;border-radius:6px;font-size:13px;width:150px;">'+bolgeOps+'</select></td>'+
       '<td><span id="bayi-il-'+b.id+'">'+(b.il||'—')+'</span>'+
-      '<input id="bayi-il-input-'+b.id+'" value="'+(b.il||'')+'" placeholder="İl" style="display:none;padding:5px 8px;border:1.5px solid #7ab528;border-radius:6px;font-size:13px;width:100px;"/></td>'+
+        '<input id="bayi-il-input-'+b.id+'" value="'+(b.il||'')+'" placeholder="İl/Şehir" style="display:none;padding:5px 8px;border:1.5px solid #7ab528;border-radius:6px;font-size:13px;width:100px;"/></td>'+
       '<td><span id="bayi-yetk-'+b.id+'">'+(b.yetkili||'—')+'</span>'+
-      '<input id="bayi-yetk-input-'+b.id+'" value="'+(b.yetkili||'')+'" placeholder="Yetkili adı" style="display:none;padding:5px 8px;border:1.5px solid #7ab528;border-radius:6px;font-size:13px;width:130px;"/></td>'+
+        '<input id="bayi-yetk-input-'+b.id+'" value="'+(b.yetkili||'')+'" placeholder="Yetkili adı" style="display:none;padding:5px 8px;border:1.5px solid #7ab528;border-radius:6px;font-size:13px;width:120px;"/></td>'+
       '<td id="bayi-btn-'+b.id+'">'+
-        '<button class="btn btn-outline" style="font-size:12px;padding:5px 10px;" onclick="bayiDuzenle(\'' + b.id + '\')">✏️ Düzenle</button> '+
+        '<button class="btn btn-outline" style="font-size:12px;padding:5px 10px;" onclick="bayiDuzenle(\'' + b.id + '\')">✏️</button> '+
         '<button class="btn" style="font-size:12px;padding:5px 10px;background:#fef2f2;color:#e02424;border:1.5px solid #fca5a5;" onclick="bayiSil(\'' + b.id + '\')">🗑</button>'+
       '</td>'+
-      '</tr>';
+    '</tr>';
   }).join('');
 }
 
 function bayiDuzenle(id){
-  // Goster input
-  ['ad','il','yetk'].forEach(function(k){
+  ['ad','il','yetk','bolge'].forEach(function(k){
     document.getElementById('bayi-'+k+'-'+id).style.display='none';
     document.getElementById('bayi-'+k+'-input-'+id).style.display='inline-block';
   });
+  // bolge select'te mevcut değeri seç
+  var bolgeSel = document.getElementById('bayi-bolge-input-'+id);
+  var bayi = tumBayiler.find(function(b){ return b.id===id; });
+  if(bolgeSel && bayi && bayi.bolge) bolgeSel.value = bayi.bolge;
   document.getElementById('bayi-btn-'+id).innerHTML=
     '<button class="btn btn-green" style="font-size:12px;padding:5px 10px;" onclick="bayiKaydet(\'' + id + '\')">💾 Kaydet</button> '+
     '<button class="btn btn-outline" style="font-size:12px;padding:5px 10px;" onclick="bayileriYukle()">İptal</button>';
@@ -557,14 +771,15 @@ function bayiDuzenle(id){
 async function bayiKaydet(id){
   var ad = document.getElementById('bayi-ad-input-'+id).value.trim();
   var il = document.getElementById('bayi-il-input-'+id).value.trim();
+  var bolge = document.getElementById('bayi-bolge-input-'+id).value;
   var yetkili = document.getElementById('bayi-yetk-input-'+id).value.trim();
   if(!ad){ alert('Bayi adı boş olamaz'); return; }
   var r = await fetch(SUPABASE_URL+'/rest/v1/bayiler?id=eq.'+id,{
     method:'PATCH',
     headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal'}),
-    body:JSON.stringify({ad:ad,il:il||null,yetkili:yetkili||null})
+    body:JSON.stringify({ad:ad,il:il||null,bolge:bolge||null,yetkili:yetkili||null})
   });
-  if(r.ok){ alert('Kaydedildi'); bayileriYukle(); kullanicilariYukle(); }
+  if(r.ok){ bayileriYukle(); bayiListesiYukle(); }
   else alert('Hata: '+r.status);
 }
 
@@ -579,51 +794,200 @@ async function bayiSil(id){
 async function yeniBayiEkle(){
   var ad = document.getElementById('yeni-bayi-ad').value.trim();
   var il = document.getElementById('yeni-bayi-il').value.trim();
+  var bolge = document.getElementById('yeni-bayi-bolge').value;
   if(!ad){ alert('Bayi adı girin'); return; }
   var r = await fetch(SUPABASE_URL+'/rest/v1/bayiler',{
     method:'POST',
     headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal'}),
-    body:JSON.stringify({ad:ad,il:il||null})
+    body:JSON.stringify({ad:ad,il:il||null,bolge:bolge||null})
   });
   if(r.ok){
     document.getElementById('yeni-bayi-ad').value='';
     document.getElementById('yeni-bayi-il').value='';
-    bayileriYukle();
+    document.getElementById('yeni-bayi-bolge').value='';
+    bayileriYukle(); bayiListesiYukle();
   } else alert('Eklenemedi: '+r.status);
 }
 
-// ═══ KULLANICILAR YÖNETİMİ ═══
+// ═══ SATICILAR YÖNETİMİ ═══
 async function kullanicilariYukle(){
-  var r = await fetch(SUPABASE_URL+'/rest/v1/profiller?select=*,bayiler(ad)&order=ad_soyad',{headers:hdrs()});
-  var profiller = await r.json();
-  if(!Array.isArray(profiller)) profiller=[];
-  var tbody = document.getElementById('kullanici-tbody');
-  if(!profiller.length){ tbody.innerHTML='<tr><td colspan="4" class="bos">Profil bulunamadı. Kullanıcılar ilk girişlerinde otomatik oluşur.</td></tr>'; return; }
-  var bayiOpsiyonlari = tumBayiler.map(function(b){
-    return '<option value="'+b.id+'">'+b.ad+'</option>';
-  }).join('');
-  tbody.innerHTML = profiller.map(function(p){
-    var secilenBayi = p.bayi_id||'';
-    return '<tr>'+
-      '<td><strong>'+(p.ad_soyad||'—')+'</strong></td>'+
-      '<td style="font-size:12px;color:#6b7280;">'+(p.email||'')+'</td>'+
-      '<td>'+(p.bayiler?'<span style="background:#f0f7e6;padding:2px 8px;border-radius:12px;font-size:12px;color:#5a8a1a;">'+p.bayiler.ad+'</span>':'<span style="color:#9ca3af;font-size:12px;">Atanmamış</span>')+'</td>'+
-      '<td><select onchange="bayiAta(\'' + p.id + '\',this.value)" style="padding:5px 8px;border:1.5px solid #e5e7eb;border-radius:6px;font-size:12px;">'+
-        '<option value="">-- Bayi seç --</option>'+bayiOpsiyonlari+
-      '</select></td>'+
-      '</tr>';
-  }).join('');
+  var nsBayi = document.getElementById('ns-bayi');
+  if(nsBayi){
+    nsBayi.innerHTML = '<option value="">-- Bayi seç --</option>' +
+      tumBayiler.map(function(b){ return '<option value="'+b.id+'">'+b.ad+'</option>'; }).join('');
+  }
+  await saticiYonetimYukle();
 }
 
-async function bayiAta(profilId, bayiId){
+async function saticiYonetimYukle(){
+  var r = await fetch(SUPABASE_URL+'/rest/v1/profiller?select=id,ad_soyad,email,bayi_id,rol,bayiler(ad)&order=ad_soyad',{headers:hdrs()});
+  var profiller = await r.json();
+  if(!Array.isArray(profiller)) profiller=[];
+  var tbody = document.getElementById('satici-yonetim-tbody');
+  if(!profiller.length){
+    tbody.innerHTML='<tr><td colspan="6" class="bos">Henüz satıcı yok. Yukarıdan ekleyin.</td></tr>';
+    return;
+  }
+  var bayiOps = '<option value="">-- Seç --</option>'+
+    tumBayiler.map(function(b){ return '<option value="'+b.id+'">'+b.ad+'</option>'; }).join('');
+  var rolOps = [
+    {v:'admin',l:'🔑 Admin'},
+    {v:'yonetim',l:'👔 Yönetim'},
+    {v:'satis_muduru',l:'📊 Satış Müdürü'},
+    {v:'satici',l:'🚗 Satıcı'}
+  ].map(function(r){ return '<option value="'+r.v+'">'+r.l+'</option>'; }).join('');
+
+  tbody.innerHTML = profiller.map(function(p){
+    var bayiGoster = p.bayiler
+      ? '<span style="background:#f0f7e6;padding:2px 8px;border-radius:12px;font-size:12px;color:#5a8a1a;">'+p.bayiler.ad+'</span>'
+      : '<span style="color:#9ca3af;font-size:12px;">Atanmamış</span>';
+    var rolVal = p.rol || 'satici';
+    var rolBadge = '<span class="rol-badge-'+rolVal+'">'+(ROL_ETIKET[rolVal]||rolVal)+'</span>';
+    return '<tr id="sr-'+p.id+'">'+
+      '<td><span id="sr-ad-'+p.id+'"><strong>'+(p.ad_soyad||'—')+'</strong></span>'+
+        '<input id="sr-ad-inp-'+p.id+'" value="'+(p.ad_soyad||'')+'" style="display:none;padding:5px 8px;border:1.5px solid #7ab528;border-radius:6px;font-size:13px;width:140px;"/></td>'+
+      '<td style="font-size:12px;color:#6b7280;">'+(p.email||'')+'</td>'+
+      '<td class="edit-only"><select onchange="saticiRolGuncelle(\'' + p.id + '\',this.value)" style="padding:5px 8px;border:1.5px solid #e5e7eb;border-radius:6px;font-size:12px;" data-rol="'+rolVal+'">'+rolOps+'</select></td>'+
+      '<td class="readonly-satici-rol" style="display:none;">'+rolBadge+'</td>'+
+      '<td id="sr-bayi-lbl-'+p.id+'">'+bayiGoster+'</td>'+
+      '<td class="edit-only"><select onchange="saticiiBayiGuncelle(\'' + p.id + '\',this.value)" style="padding:5px 8px;border:1.5px solid #e5e7eb;border-radius:6px;font-size:12px;">'+bayiOps+'</select></td>'+
+      '<td class="edit-only" id="sr-btn-'+p.id+'">'+
+        '<button onclick="saticiDuzenle(\'' + p.id + '\')" style="background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;">✏️</button> '+
+        '<button onclick="saticiSil(\'' + p.id + '\')" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:5px 10px;font-size:12px;color:#e02424;cursor:pointer;">🗑</button>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
+
+  // Rol select'lerinde mevcut değeri seç
+  profiller.forEach(function(p){
+    var sel = document.querySelector('#sr-'+p.id+' select[data-rol]');
+    if(sel) sel.value = p.rol || 'satici';
+    // Salt okunur modda rol badge göster
+    if(_mevcutRol !== 'admin'){
+      var rdEl = document.querySelector('#sr-'+p.id+' .readonly-satici-rol');
+      if(rdEl) rdEl.style.display='';
+    }
+  });
+}
+
+async function yeniSaticiEkle(){
+  var ad = document.getElementById('ns-ad').value.trim();
+  var email = document.getElementById('ns-email').value.trim();
+  var sifre = document.getElementById('ns-sifre').value.trim() || '12134';
+  var bayiId = document.getElementById('ns-bayi').value;
+  var msg = document.getElementById('ns-mesaj');
+  if(!ad || !email){ msg.style.color='#e02424'; msg.textContent='Ad ve e-posta zorunlu!'; return; }
+  msg.style.color='#6b7280'; msg.textContent='Oluşturuluyor...';
+  try {
+    var authR = await fetch(SUPABASE_URL+'/auth/v1/signup',{
+      method:'POST',
+      headers:{'apikey':SUPABASE_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({email:email, password:sifre})
+    });
+    var authD = await authR.json();
+    if(!authR.ok){
+      msg.style.color='#e02424';
+      msg.textContent='Hata: '+(authD.msg||authD.message||authD.error_description||JSON.stringify(authD));
+      return;
+    }
+    var userId = (authD.user ? authD.user.id : null) || authD.id;
+    if(!userId){ msg.style.color='#e02424'; msg.textContent='ID alınamadı. E-posta zaten kayıtlı olabilir.'; return; }
+    var profilBody = {id:userId, ad_soyad:ad, email:email};
+    if(bayiId) profilBody.bayi_id = bayiId;
+    var profilR = await fetch(SUPABASE_URL+'/rest/v1/profiller',{
+      method:'POST',
+      headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal'}),
+      body:JSON.stringify(profilBody)
+    });
+    if(profilR.ok || profilR.status===201){
+      msg.style.color='#5a8a1a';
+      msg.textContent='✓ Eklendi! Giriş: '+email+' / Şifre: '+sifre;
+      document.getElementById('ns-ad').value='';
+      document.getElementById('ns-email').value='';
+      document.getElementById('ns-sifre').value='12134';
+      document.getElementById('ns-bayi').value='';
+      await saticiYonetimYukle();
+    } else {
+      var errText = await profilR.text();
+      msg.style.color='#e02424';
+      msg.textContent='Profil hatası ('+profilR.status+'): '+errText;
+    }
+  } catch(e){ msg.style.color='#e02424'; msg.textContent='Hata: '+e.message; }
+}
+
+function saticiDuzenle(id){
+  document.getElementById('sr-ad-'+id).style.display='none';
+  document.getElementById('sr-ad-inp-'+id).style.display='inline-block';
+  document.getElementById('sr-btn-'+id).innerHTML=
+    '<button onclick="saticiKaydet(\'' + id + '\')" style="background:#7ab528;color:white;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;">💾 Kaydet</button> '+
+    '<button onclick="saticiYonetimYukle()" style="background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;">İptal</button>';
+}
+
+async function saticiKaydet(id){
+  var ad = document.getElementById('sr-ad-inp-'+id).value.trim();
+  if(!ad){ alert('Ad boş olamaz'); return; }
+  var r = await fetch(SUPABASE_URL+'/rest/v1/profiller?id=eq.'+id,{
+    method:'PATCH',
+    headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal'}),
+    body:JSON.stringify({ad_soyad:ad})
+  });
+  if(r.ok) await saticiYonetimYukle();
+  else alert('Hata: '+r.status);
+}
+
+async function saticiiBayiGuncelle(profilId, bayiId){
   var body = bayiId ? {bayi_id:bayiId} : {bayi_id:null};
   var r = await fetch(SUPABASE_URL+'/rest/v1/profiller?id=eq.'+profilId,{
     method:'PATCH',
     headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal'}),
     body:JSON.stringify(body)
   });
-  if(r.ok) alert('Bayi ataması kaydedildi!');
-  else alert('Hata: '+r.status);
+  if(r.ok){
+    var lbl = document.getElementById('sr-bayi-lbl-'+profilId);
+    var bayi = tumBayiler.find(function(b){ return b.id===bayiId; });
+    if(lbl) lbl.innerHTML = bayi
+      ? '<span style="background:#f0f7e6;padding:2px 8px;border-radius:12px;font-size:12px;color:#5a8a1a;">'+bayi.ad+'</span>'
+      : '<span style="color:#9ca3af;font-size:12px;">Atanmamış</span>';
+  } else alert('Güncelleme hatası: '+r.status);
+}
+
+async function saticiSil(id){
+  if(!confirm('Bu satıcıyı silmek istediğinize emin misiniz?')) return;
+  var r = await fetch(SUPABASE_URL+'/rest/v1/profiller?id=eq.'+id,{
+    method:'DELETE', headers:hdrs()
+  });
+  if(r.ok) await saticiYonetimYukle();
+  else alert('Silinemedi: '+r.status);
+}
+
+async function bayiAta(profilId, bayiId){ await saticiiBayiGuncelle(profilId, bayiId); }
+
+async function saticiRolGuncelle(profilId, yeniRol){
+  if(_mevcutRol !== 'admin'){ alert('Bu işlem için admin yetkisi gerekli.'); return; }
+  var r = await fetch(SUPABASE_URL+'/rest/v1/profiller?id=eq.'+profilId,{
+    method:'PATCH',
+    headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal'}),
+    body:JSON.stringify({rol:yeniRol})
+  });
+  if(!r.ok) alert('Rol güncellenemedi: '+r.status);
+}
+
+// ═══ ANLIK İSTASYON ADI DÜZENLEME (sadece admin) ═══
+async function istasyonAdiKaydet(ziyaretId, yeniAd){
+  if(!yeniAd.trim()) return;
+  var r = await fetch(SUPABASE_URL+'/rest/v1/ziyaretler?id=eq.'+ziyaretId,{
+    method:'PATCH',
+    headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal'}),
+    body:JSON.stringify({istasyon_adi:yeniAd.trim()})
+  });
+  if(r.ok){
+    // Hafızadaki veriyi güncelle
+    var z = tumVeriler.find(function(x){ return x.id===ziyaretId; });
+    if(z) z.istasyon_adi = yeniAd.trim();
+    raporFiltrele();
+  } else {
+    alert('Kaydedilemedi: '+r.status);
+  }
 }
 
 // ═══ TAKİPLER ═══
@@ -691,7 +1055,15 @@ function tabGec(tab){
     if(btn) btn.classList.toggle('aktif', t===tab);
   });
   if(tab==='takipler') takipleriYukle();
-  if(tab==='bayiler') bayileriYukle();
+  if(tab==='bayiler'){
+    bayileriYukle();
+    // Yeni bayi formundaki bölge select'ini doldur
+    var nbSel = document.getElementById('yeni-bayi-bolge');
+    if(nbSel && nbSel.options.length<=1){
+      nbSel.innerHTML = '<option value="">-- Bölge seç --</option>'+
+        BOLGELER.map(function(bg){ return '<option value="'+bg+'">'+bg+'</option>'; }).join('');
+    }
+  }
   if(tab==='kullanicilar'){ bayileriYukle(); kullanicilariYukle(); }
 }
 </script>
