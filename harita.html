@@ -370,12 +370,12 @@
       <!-- SONUÇ -->
       <div class="f-grup"><label>Ziyaret Sonucu</label></div>
       <div class="sonuc-grup">
-        <button class="sonuc-btn" onclick="sonucSec(this,'sicak')">🔥 Sıcak</button>
-        <button class="sonuc-btn" onclick="sonucSec(this,'kararsiz')">⚪ Kararsız</button>
-        <button class="sonuc-btn" onclick="sonucSec(this,'soguk')">🔵 Soğuk</button>
-        <button class="sonuc-btn" onclick="sonucSec(this,'anlasma')">✅ Anlaştı</button>
-        <button class="sonuc-btn" onclick="sonucSec(this,'teklif')">📋 Teklif</button>
-        <button class="sonuc-btn" onclick="sonucSec(this,'takipte')">🔄 Takipte</button>
+        <button class="sonuc-btn" data-deger="sicak" onclick="sonucSec(this,'sicak')">🔥 Sıcak</button>
+        <button class="sonuc-btn" data-deger="kararsiz" onclick="sonucSec(this,'kararsiz')">⚪ Kararsız</button>
+        <button class="sonuc-btn" data-deger="soguk" onclick="sonucSec(this,'soguk')">🔵 Soğuk</button>
+        <button class="sonuc-btn" data-deger="anlasma" onclick="sonucSec(this,'anlasma')">✅ Anlaştı</button>
+        <button class="sonuc-btn" data-deger="teklif" onclick="sonucSec(this,'teklif')">📋 Teklif</button>
+        <button class="sonuc-btn" data-deger="takipte" onclick="sonucSec(this,'takipte')">🔄 Takipte</button>
       </div>
 
       <!-- TEKLİF ALANLARI -->
@@ -453,12 +453,8 @@ async function uygulamaBaslat(user) {
   document.getElementById('profil-btn').textContent = ilk;
   document.getElementById('giris-ekrani').style.display = 'none';
   document.getElementById('ana-uygulama').style.display = 'flex';
-  // Admin link goster
-  if (ADMIN_EMAILS.includes((user.email||'').toLowerCase())) {
-    var al = document.getElementById('admin-link');
-    if (al) al.style.display = 'flex';
-  }
-  // Profil + bayi async yukle
+
+  // Profil + bayi + ROL async yukle
   fetch(SUPABASE_URL+'/rest/v1/profiller?id=eq.'+user.id+'&select=*,bayiler(id,ad)&limit=1',{headers:{'apikey':SUPABASE_KEY}})
     .then(function(r){return r.json();}).then(function(arr){
       if(arr && arr[0]){
@@ -467,9 +463,22 @@ async function uygulamaBaslat(user) {
         if(p.bayiler) { mevcutKullanici.bayi_adi = p.bayiler.ad; mevcutKullanici.bayi_id = p.bayiler.id; }
         var btn = document.getElementById('profil-btn');
         if(btn && p.ad_soyad) btn.textContent = p.ad_soyad.charAt(0).toUpperCase();
+        // ROL bazlı admin link: admin/yonetim/satis_muduru görebilir
+        var rol = p.rol || 'satici';
+        if(rol !== 'satici'){
+          var al = document.getElementById('admin-link');
+          if(al) al.style.display = 'flex';
+        }
+      } else {
+        // Profili olmayan kullanıcı (ilk admin) — admin say, linki göster
+        if(ADMIN_EMAILS.includes((user.email||'').toLowerCase())){
+          var al = document.getElementById('admin-link');
+          if(al) al.style.display = 'flex';
+        }
       }
     }).catch(function(){});
   haritaBaslat();
+  otosaveBaslat(); // Otomatik kayıt başlat
 }
 
 // ——— HARİTA ———
@@ -534,6 +543,8 @@ function istasyonSec(ist) {
   document.getElementById('panel-istasyon-adi').textContent = ist.adi;
   document.getElementById('panel-istasyon-alt').textContent = (ist.marka?ist.marka+' · ':'')+( ist.adres||'');
   panelAc(); formTemizle(); gecmisYukle();
+  // Taslak varsa geri yükle
+  setTimeout(otosaveGeriYukle, 200);
 }
 function panelAc() { document.getElementById('crm-panel').classList.add('acik'); document.body.classList.add('panel-acik'); if(map) setTimeout(function(){map.invalidateSize();},320); }
 function panelKapat() { document.getElementById('crm-panel').classList.remove('acik'); document.body.classList.remove('panel-acik'); if(map) setTimeout(function(){map.invalidateSize();},320); }
@@ -580,7 +591,58 @@ function secilenUrunleriAl() {
   return vals.join(', ');
 }
 
+// ——— OTOMATIK KAYIT (localStorage taslak) ———
+var _otosaveTimer = null;
+var FORM_ALANLARI = ['f-yetkili','f-unvan','f-fiyat-oto','f-fiyat-self','f-not','f-takip','f-rakip',
+  'f-teklif-tutar','f-teklif-tarih','f-rakip-fiyat','f-su-sertlik','f-su-ph','f-su-ppm','f-su-ec'];
+
+function otosaveBaslat(){
+  FORM_ALANLARI.forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.addEventListener('input', function(){
+      clearTimeout(_otosaveTimer);
+      _otosaveTimer = setTimeout(otosaveKaydet, 800);
+    });
+  });
+}
+
+function otosaveKaydet(){
+  if(!secilenIstasyon) return;
+  var draft = { istasyon_id: secilenIstasyon.id, istasyon_adi: secilenIstasyon.adi, sonuc: secilenSonuc };
+  FORM_ALANLARI.forEach(function(id){
+    var el = document.getElementById(id); if(el) draft[id] = el.value;
+  });
+  draft.katalog = document.getElementById('f-katalog') ? document.getElementById('f-katalog').checked : false;
+  try { localStorage.setItem('alga_crm_draft', JSON.stringify(draft)); } catch(e){}
+  // Küçük kayıt göstergesi
+  var ind = document.getElementById('otosave-ind');
+  if(ind){ ind.style.opacity='1'; setTimeout(function(){ ind.style.opacity='0'; }, 1500); }
+}
+
+function otosaveGeriYukle(){
+  try {
+    var raw = localStorage.getItem('alga_crm_draft');
+    if(!raw) return;
+    var draft = JSON.parse(raw);
+    // Sadece aynı istasyon için geri yükle
+    if(secilenIstasyon && draft.istasyon_id === secilenIstasyon.id){
+      FORM_ALANLARI.forEach(function(id){
+        var el = document.getElementById(id); if(el && draft[id]) el.value = draft[id];
+      });
+      if(draft.katalog){ var kEl=document.getElementById('f-katalog'); if(kEl) kEl.checked=true; }
+      if(draft.sonuc){
+        var sonucBtn = document.querySelector('.sonuc-btn[data-deger="'+draft.sonuc+'"]');
+        if(sonucBtn) sonucSec(sonucBtn, draft.sonuc);
+      }
+      toast('📝 Önceki taslak geri yüklendi');
+    }
+  } catch(e){}
+}
+
+function otosaveSil(){ try { localStorage.removeItem('alga_crm_draft'); } catch(e){} }
+
 function formTemizle() {
+  otosaveSil();
   ['f-yetkili','f-unvan','f-fiyat-oto','f-fiyat-self','f-not','f-takip','f-rakip',
    'f-teklif-tutar','f-teklif-tarih','f-rakip-fiyat',
    'f-su-sertlik','f-su-ph','f-su-ppm','f-su-ec'].forEach(function(id){
@@ -767,7 +829,8 @@ async function ziyaretKaydet() {
     ]);
     if(!resp.ok){ var t=await resp.text(); throw new Error('HTTP '+resp.status+': '+t); }
     markerRenkGuncelle(secilenIstasyon.adi, secilenSonuc);
-    toast('Ziyaret kaydedildi!');
+    otosaveSil(); // Taslağı temizle
+    toast('✓ Ziyaret kaydedildi!');
     formTemizle(); tabDegistir('gecmis');
   } catch(e) {
     toast('Hata: '+(e.message||String(e)));
