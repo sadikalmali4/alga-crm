@@ -482,12 +482,9 @@ async function uygulamaBaslat(user) {
         if(p.bayiler) { mevcutKullanici.bayi_adi = p.bayiler.ad; mevcutKullanici.bayi_id = p.bayiler.id; }
         var btn = document.getElementById('profil-btn');
         if(btn && p.ad_soyad) btn.textContent = p.ad_soyad.charAt(0).toUpperCase();
-        // ROL bazlı admin link: admin/yonetim/satis_muduru görebilir
-        var rol = p.rol || 'satici';
-        if(rol !== 'satici'){
-          var al = document.getElementById('admin-link');
-          if(al) al.style.display = 'flex';
-        }
+        // Herkes rapor panelini görebilir (admin-link herkese açık)
+        var al = document.getElementById('admin-link');
+        if(al) al.style.display = 'flex';
       } else {
         // Profili olmayan kullanıcı (ilk admin) — admin say, linki göster
         if(ADMIN_EMAILS.includes((user.email||'').toLowerCase())){
