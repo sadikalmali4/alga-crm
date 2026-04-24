@@ -196,7 +196,7 @@
         <thead>
           <tr>
             <th>Tarih</th><th>Satıcı</th><th>İstasyon</th><th>Bayi</th>
-            <th>Sonuç</th><th>Teklif (₺)</th><th>Not</th><th style="text-align:center">Detay</th>
+            <th>Sonuç</th><th>Teklif (₺)</th><th>Not</th><th style="text-align:center">Detay</th><th class="edit-only" style="text-align:center">Sil</th>
           </tr>
         </thead>
         <tbody id="ziyaret-tbody"><tr><td colspan="8" class="bos">Yükleniyor...</td></tr></tbody>
@@ -613,6 +613,7 @@ function tabloGuncelle(veriler){
       '<td style="font-size:13px;">'+(z.teklif_tutari ? z.teklif_tutari.toLocaleString('tr-TR')+' ₺':'—')+'</td>'+
       '<td style="max-width:150px;font-size:11px;color:#6b7280;">'+(z.not_metni ? z.not_metni.substring(0,60)+(z.not_metni.length>60?'...':''):'—')+'</td>'+
       '<td style="text-align:center;font-size:16px;">👁</td>'+
+      (_mevcutRol==='admin' ? '<td style="text-align:center;" class="edit-only"><button onclick="event.stopPropagation();ziyaretSil(\''+z.id+'\')" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:4px 8px;font-size:12px;color:#e02424;cursor:pointer;">🗑</button></td>' : '<td class="edit-only"></td>')+
     '</tr>';
   }).join('');
 }
