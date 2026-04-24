@@ -258,8 +258,9 @@
   <button id="panel-ac-btn" class="gizli" onclick="panelAc()">+</button>
 </div>
 
-<!-- LEGEND -->
+<!-- LEGEND + ZİYARET FİLTRESİ -->
 <div class="harita-legend" id="harita-legend" style="display:none;">
+  <div style="font-size:10px;font-weight:700;color:#6b7280;margin-bottom:6px;text-transform:uppercase;">Renk Anlamları</div>
   <div class="legend-item"><div class="legend-dot" style="background:#7ab528"></div>Ziyaret yok</div>
   <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Sıcak</div>
   <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Anlaştı</div>
@@ -267,6 +268,13 @@
   <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>Takipte</div>
   <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div>Kararsız</div>
   <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Soğuk</div>
+  <div style="border-top:1px solid #e5e7eb;margin:8px 0 6px;"></div>
+  <div style="font-size:10px;font-weight:700;color:#6b7280;margin-bottom:6px;text-transform:uppercase;">Filtre</div>
+  <div style="display:flex;flex-direction:column;gap:4px;">
+    <button onclick="ziyaretFiltrele('tumu')" id="zf-tumu" style="padding:4px 8px;border-radius:6px;border:1.5px solid #7ab528;background:#7ab528;color:white;font-size:11px;cursor:pointer;font-weight:600;">Tümü</button>
+    <button onclick="ziyaretFiltrele('ziyaret_edilenler')" id="zf-edilenler" style="padding:4px 8px;border-radius:6px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:11px;cursor:pointer;">🔴 Ziyaret Edilenler</button>
+    <button onclick="ziyaretFiltrele('ziyaret_edilmeyenler')" id="zf-edilmeyenler" style="padding:4px 8px;border-radius:6px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:11px;cursor:pointer;">🟢 Ziyaret Edilmeyenler</button>
+  </div>
 </div>
 
 <!-- CRM PANELİ -->
@@ -288,6 +296,10 @@
       <div class="f-grid">
         <div class="f-grup"><label>Yetkili adı</label><input type="text" id="f-yetkili" placeholder="Ad Soyad"/></div>
         <div class="f-grup"><label>Unvan</label><input type="text" id="f-unvan" placeholder="Müdür..."/></div>
+      </div>
+      <div class="f-grid">
+        <div class="f-grup"><label>🚗 Araç Sayısı</label><input type="number" id="f-arac-sayisi" placeholder="0" min="0"/></div>
+        <div class="f-grup"></div>
       </div>
 
       <!-- ÜRÜNLER (çok seçimli) -->
@@ -523,15 +535,20 @@ function markerRenk(istAdi) {
   return SONUC_RENK[sonuc] || SONUC_RENK.default;
 }
 
+var _clusterGroup = null;
+var _tumMarkerlar = []; // {marker, ist} listesi
+var _aktifZiyaretFiltre = 'tumu';
+
 function istasyonlariHaritayaEkle() {
   if(!map||!ISTASYON_DATA||!ISTASYON_DATA.length) return;
-  var cluster = L.markerClusterGroup({
+  _clusterGroup = L.markerClusterGroup({
     chunkedLoading:true, maxClusterRadius:40,
     iconCreateFunction: function(c) {
       var n=c.getChildCount(), s=n>100?44:n>10?36:28;
       return L.divIcon({html:'<div style="width:'+s+'px;height:'+s+'px;background:#7ab528;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.25)">'+n+'</div>',iconSize:[s,s],iconAnchor:[s/2,s/2]});
     }
   });
+  _tumMarkerlar = [];
   ISTASYON_DATA.forEach(function(ist){
     if(!ist.lat||!ist.lng) return;
     var renk = markerRenk(ist.adi);
@@ -540,11 +557,35 @@ function istasyonlariHaritayaEkle() {
     marker.on('click',function(e){ e.originalEvent.stopPropagation(); istasyonSec(ist); });
     marker.bindTooltip(ist.marka+' — '+ist.adi.substring(0,40),{direction:'top',offset:[0,-8]});
     markerLayerMap[ist.adi] = marker;
-    cluster.addLayer(marker);
+    _tumMarkerlar.push({marker:marker, ist:ist});
+    _clusterGroup.addLayer(marker);
   });
-  map.addLayer(cluster);
+  map.addLayer(_clusterGroup);
   istasyonlar = ISTASYON_DATA;
   console.log('Haritaya eklendi:',ISTASYON_DATA.length);
+}
+
+function ziyaretFiltrele(mod) {
+  if(!_clusterGroup) return;
+  _aktifZiyaretFiltre = mod;
+  // Buton stillerini güncelle
+  ['tumu','edilenler','edilmeyenler'].forEach(function(k){
+    var btn = document.getElementById('zf-'+k);
+    if(!btn) return;
+    var aktif = (mod === (k==='tumu'?'tumu':k==='edilenler'?'ziyaret_edilenler':'ziyaret_edilmeyenler'));
+    btn.style.background = aktif ? '#7ab528' : 'white';
+    btn.style.color = aktif ? 'white' : '#374151';
+    btn.style.borderColor = aktif ? '#7ab528' : '#e5e7eb';
+  });
+  // Cluster'ı temizle ve filtrele
+  _clusterGroup.clearLayers();
+  _tumMarkerlar.forEach(function(item){
+    var ziyaretVar = !!ziyaretRenkMap[item.ist.adi];
+    var goster = mod === 'tumu' ||
+      (mod === 'ziyaret_edilenler' && ziyaretVar) ||
+      (mod === 'ziyaret_edilmeyenler' && !ziyaretVar);
+    if(goster) _clusterGroup.addLayer(item.marker);
+  });
 }
 
 function markerRenkGuncelle(istAdi, sonuc) {
@@ -609,7 +650,7 @@ function secilenUrunleriAl() {
 
 // ——— OTOMATIK KAYIT (localStorage taslak) ———
 var _otosaveTimer = null;
-var FORM_ALANLARI = ['f-yetkili','f-unvan','f-fiyat-oto','f-fiyat-self','f-not','f-takip','f-rakip',
+var FORM_ALANLARI = ['f-yetkili','f-unvan','f-arac-sayisi','f-fiyat-oto','f-fiyat-self','f-not','f-takip','f-rakip',
   'f-teklif-tutar','f-teklif-tarih','f-rakip-fiyat','f-su-sertlik','f-su-ph','f-su-ppm','f-su-ec'];
 
 function otosaveBaslat(){
@@ -659,7 +700,7 @@ function otosaveSil(){ try { localStorage.removeItem('alga_crm_draft'); } catch(
 
 function formTemizle() {
   otosaveSil();
-  ['f-yetkili','f-unvan','f-fiyat-oto','f-fiyat-self','f-not','f-takip','f-rakip',
+  ['f-yetkili','f-unvan','f-arac-sayisi','f-fiyat-oto','f-fiyat-self','f-not','f-takip','f-rakip',
    'f-teklif-tutar','f-teklif-tarih','f-rakip-fiyat',
    'f-su-sertlik','f-su-ph','f-su-ppm','f-su-ec'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
@@ -832,6 +873,7 @@ async function ziyaretKaydet() {
       su_ph:parseFloat(document.getElementById('f-su-ph').value)||null,
       su_ppm:parseFloat(document.getElementById('f-su-ppm').value)||null,
       su_ec:parseFloat(document.getElementById('f-su-ec').value)||null,
+      arac_sayisi:parseInt(document.getElementById('f-arac-sayisi').value)||null,
       bayi_id:mevcutKullanici.bayi_id||null,
       bayi_adi:mevcutKullanici.bayi_adi||null,
     };
