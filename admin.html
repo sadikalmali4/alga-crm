@@ -1029,8 +1029,29 @@ async function sifirlaGonder(email){
   var {error} = await sb.auth.resetPasswordForEmail(email, {
     redirectTo: 'https://sadikalmali4.github.io/alga-crm/harita.html'
   });
-  if(error) alert('Hata: '+error.message);
-  else alert('✅ Şifre sıfırlama e-postası gönderildi!\n'+email);
+  if(error){
+    if(error.message && error.message.toLowerCase().includes('security purposes')){
+      alert('⏳ Lütfen 60 saniye bekleyip tekrar deneyin.\n(Supabase güvenlik limiti)');
+    } else {
+      alert('Hata: '+error.message);
+    }
+  } else {
+    alert('✅ Şifre sıfırlama e-postası gönderildi!\n'+email);
+  }
+}
+
+async function ziyaretSil(id){
+  if(!confirm('Bu ziyareti silmek istediğinize emin misiniz?')) return;
+  var r = await fetch(SUPABASE_URL+'/rest/v1/ziyaretler?id=eq.'+id, {
+    method:'DELETE',
+    headers:hdrs()
+  });
+  if(r.ok){
+    tumVeriler = tumVeriler.filter(function(z){ return z.id !== id; });
+    raporFiltrele();
+  } else {
+    alert('Silinemedi: '+r.status);
+  }
 }
 
 async function bayiAta(profilId, bayiId){ await saticiiBayiGuncelle(profilId, bayiId); }
