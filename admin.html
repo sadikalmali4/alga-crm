@@ -266,9 +266,13 @@
         <input id="ns-email" type="email" placeholder="ahmet@alga.com.tr" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;width:180px;"/>
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;">
-        <label style="font-size:11px;font-weight:600;color:#6b7280;">BAYİ</label>
-        <select id="ns-bayi" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;width:150px;">
-          <option value="">-- Bayi seç --</option>
+        <label style="font-size:11px;font-weight:600;color:#6b7280;">ROL *</label>
+        <select id="ns-rol" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;width:200px;">
+          <option value="satici">🚗 Satıcı</option>
+          <option value="satis_muduru">📊 Satış Müdürü</option>
+          <option value="genel_mudur">🏢 Genel Müdür</option>
+          <option value="yk_baskani">👑 Yönetim Kurulu Başkanı</option>
+          <option value="admin">🔑 Admin</option>
         </select>
       </div>
       <button onclick="yeniSaticiEkle()" style="padding:8px 20px;background:#7ab528;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">+ Ekle</button>
@@ -319,10 +323,12 @@ var _mevcutRol = null;
 var _mevcutAd = '';
 
 var ROL_ETIKET = {
-  admin: '🔑 Admin',
-  yonetim: '👔 Yönetim',
+  admin:        '🔑 Admin',
+  yk_baskani:   '👑 Yönetim Kurulu Başkanı',
+  genel_mudur:  '🏢 Genel Müdür',
   satis_muduru: '📊 Satış Müdürü',
-  satici: '🚗 Satıcı'
+  satici:       '🚗 Satıcı',
+  yonetim:      '👔 Yönetim'  // geriye dönük uyumluluk
 };
 
 // Tüm fetch'lerde kullanılacak header yardımcısı
@@ -816,7 +822,7 @@ async function kullanicilariYukle(){
 }
 
 async function saticiYonetimYukle(){
-  var r = await fetch(SUPABASE_URL+'/rest/v1/profiller?select=id,ad_soyad,email,bayi_id,rol,bayiler(ad)&order=ad_soyad',{headers:hdrs()});
+  var r = await fetch(SUPABASE_URL+'/rest/v1/profiller?select=id,ad_soyad,bayi_id,rol,bayiler(ad)&order=ad_soyad',{headers:hdrs()});
   var profiller = await r.json();
   if(!Array.isArray(profiller)) profiller=[];
   var tbody = document.getElementById('satici-yonetim-tbody');
@@ -827,10 +833,11 @@ async function saticiYonetimYukle(){
   var bayiOps = '<option value="">-- Seç --</option>'+
     tumBayiler.map(function(b){ return '<option value="'+b.id+'">'+b.ad+'</option>'; }).join('');
   var rolOps = [
-    {v:'admin',l:'🔑 Admin'},
-    {v:'yonetim',l:'👔 Yönetim'},
+    {v:'satici',      l:'🚗 Satıcı'},
     {v:'satis_muduru',l:'📊 Satış Müdürü'},
-    {v:'satici',l:'🚗 Satıcı'}
+    {v:'genel_mudur', l:'🏢 Genel Müdür'},
+    {v:'yk_baskani',  l:'👑 YK Başkanı'},
+    {v:'admin',       l:'🔑 Admin'}
   ].map(function(r){ return '<option value="'+r.v+'">'+r.l+'</option>'; }).join('');
 
   tbody.innerHTML = profiller.map(function(p){
@@ -869,7 +876,7 @@ async function saticiYonetimYukle(){
 async function yeniSaticiEkle(){
   var ad = document.getElementById('ns-ad').value.trim();
   var email = document.getElementById('ns-email').value.trim();
-  var bayiId = document.getElementById('ns-bayi').value;
+  var rol = document.getElementById('ns-rol').value || 'satici';
   var msg = document.getElementById('ns-mesaj');
   if(!ad || !email){ msg.style.color='#e02424'; msg.textContent='Ad ve e-posta zorunlu!'; return; }
   msg.style.color='#6b7280'; msg.textContent='Hesap oluşturuluyor...';
@@ -892,14 +899,13 @@ async function yeniSaticiEkle(){
     if(!userId){ msg.style.color='#e02424'; msg.textContent='ID alınamadı. E-posta zaten kayıtlı olabilir.'; return; }
 
     // 2. Profil kaydı oluştur (email kolonu profiller tablosunda YOK — auth.users'da)
-    var profilBody = {id:userId, ad_soyad:ad};
-    if(bayiId) profilBody.bayi_id = bayiId;
+    var profilBody = {id:userId, ad_soyad:ad, rol:rol};
     var profilR = await fetch(SUPABASE_URL+'/rest/v1/profiller',{
       method:'POST',
-      headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal'}),
+      headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal,resolution=merge-duplicates'}),
       body:JSON.stringify(profilBody)
     });
-    if(!profilR.ok && profilR.status!==201){
+    if(!profilR.ok && profilR.status!==201 && profilR.status!==200){
       var errText = await profilR.text();
       msg.style.color='#e02424';
       msg.textContent='Profil hatası ('+profilR.status+'): '+errText;
@@ -914,7 +920,7 @@ async function yeniSaticiEkle(){
 
     document.getElementById('ns-ad').value='';
     document.getElementById('ns-email').value='';
-    document.getElementById('ns-bayi').value='';
+    document.getElementById('ns-rol').value='satici';
 
     if(resetR.error){
       msg.style.color='#f59e0b';
