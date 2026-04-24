@@ -259,6 +259,15 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 var tumVeriler = [];
 var chartSatici = null, chartSonuc = null;
+var _authToken = null;
+
+// Tüm fetch'lerde kullanılacak header yardımcısı
+function hdrs(extra){
+  var h = {'apikey': SUPABASE_KEY};
+  if(_authToken) h['Authorization'] = 'Bearer ' + _authToken;
+  if(extra) { for(var k in extra){ h[k]=extra[k]; } }
+  return h;
+}
 
 const BADGE = {
   sicak:'badge-sicak',kararsiz:'badge-kararsiz',soguk:'badge-soguk',
@@ -270,9 +279,20 @@ const LBL = {
 };
 
 // Auth kontrol
+// Fallback: 10sn sonra overlay her durumda kapansin
+setTimeout(function(){
+  var ov=document.getElementById('yukleniyor-overlay');
+  if(ov) ov.classList.remove('aktif');
+},10000);
+
 sb.auth.getSession().then(function(res){
-  if(!res.data||!res.data.session){ window.location.href='/alga-crm/index.html'; return; }
+  if(!res.data||!res.data.session){ window.location.href='/alga-crm/harita.html'; return; }
+  _authToken = res.data.session.access_token;
   baslat();
+}).catch(function(e){
+  console.error('Auth hatasi:',e);
+  var ov=document.getElementById('yukleniyor-overlay');
+  if(ov) ov.classList.remove('aktif');
 });
 
 async function baslat(){
@@ -291,7 +311,7 @@ async function baslat(){
 }
 
 async function bayiListesiYukle(){
-  var r = await fetch(SUPABASE_URL+'/rest/v1/bayiler?select=id,ad&order=ad',{headers:{'apikey':SUPABASE_KEY}});
+  var r = await fetch(SUPABASE_URL+'/rest/v1/bayiler?select=id,ad&order=ad',{headers:hdrs()});
   var arr = await r.json();
   tumBayiler = Array.isArray(arr)?arr:[];
   var sel = document.getElementById('f-bayi');
@@ -299,7 +319,7 @@ async function bayiListesiYukle(){
 }
 
 async function saticiListesiYukle(){
-  var r = await fetch(SUPABASE_URL+'/rest/v1/profiller?select=id,ad_soyad&order=ad_soyad',{headers:{'apikey':SUPABASE_KEY}});
+  var r = await fetch(SUPABASE_URL+'/rest/v1/profiller?select=id,ad_soyad&order=ad_soyad',{headers:hdrs()});
   var arr = await r.json();
   var sel = document.getElementById('f-satici');
   if(Array.isArray(arr)) arr.forEach(function(p){
@@ -327,14 +347,14 @@ async function raporYukle(){
     if(bayi) url += '&bayi_id=eq.'+bayi;
 
     var resp = await Promise.race([
-      fetch(url,{headers:{'apikey':SUPABASE_KEY}}),
+      fetch(url,{headers:hdrs()}),
       new Promise(function(_,rej){setTimeout(function(){rej(new Error('Zaman asimi'));},12000);})
     ]);
     var raw = await resp.json();
     tumVeriler = Array.isArray(raw) ? raw : [];
 
     // Satici adlarini ayri cek (JOIN yok)
-    var profResp = await fetch(BASE+'/profiller?select=id,ad_soyad',{headers:{'apikey':SUPABASE_KEY}});
+    var profResp = await fetch(BASE+'/profiller?select=id,ad_soyad',{headers:hdrs()});
     var profArr = await profResp.json();
     var profMap = {};
     if(Array.isArray(profArr)) profArr.forEach(function(p){profMap[p.id]=p.ad_soyad;});
@@ -490,14 +510,14 @@ function csvIndir(){
   a.download='alga_ziyaretler_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
 }
 
-async function cikisYap(){ await sb.auth.signOut(); window.location.href='/alga-crm/index.html'; }
+async function cikisYap(){ await sb.auth.signOut(); window.location.href='/alga-crm/harita.html'; }
 
 // ═══ BAYİLER YÖNETİMİ ═══
 var tumBayiler = [];
 var duzenlenenBayiId = null;
 
 async function bayileriYukle(){
-  var r = await fetch(SUPABASE_URL+'/rest/v1/bayiler?select=*&order=ad',{headers:{'apikey':SUPABASE_KEY}});
+  var r = await fetch(SUPABASE_URL+'/rest/v1/bayiler?select=*&order=ad',{headers:hdrs()});
   tumBayiler = await r.json();
   if(!Array.isArray(tumBayiler)) tumBayiler=[];
   bayiTablosunuGuncelle();
@@ -541,7 +561,7 @@ async function bayiKaydet(id){
   if(!ad){ alert('Bayi adı boş olamaz'); return; }
   var r = await fetch(SUPABASE_URL+'/rest/v1/bayiler?id=eq.'+id,{
     method:'PATCH',
-    headers:{'apikey':SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal'}),
     body:JSON.stringify({ad:ad,il:il||null,yetkili:yetkili||null})
   });
   if(r.ok){ alert('Kaydedildi'); bayileriYukle(); kullanicilariYukle(); }
@@ -551,7 +571,7 @@ async function bayiKaydet(id){
 async function bayiSil(id){
   if(!confirm('Bu bayiyi silmek istediğinize emin misiniz?')) return;
   var r = await fetch(SUPABASE_URL+'/rest/v1/bayiler?id=eq.'+id,{
-    method:'DELETE', headers:{'apikey':SUPABASE_KEY}
+    method:'DELETE', headers:hdrs()
   });
   if(r.ok) bayileriYukle(); else alert('Silinemedi: '+r.status);
 }
@@ -562,7 +582,7 @@ async function yeniBayiEkle(){
   if(!ad){ alert('Bayi adı girin'); return; }
   var r = await fetch(SUPABASE_URL+'/rest/v1/bayiler',{
     method:'POST',
-    headers:{'apikey':SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal'}),
     body:JSON.stringify({ad:ad,il:il||null})
   });
   if(r.ok){
@@ -574,7 +594,7 @@ async function yeniBayiEkle(){
 
 // ═══ KULLANICILAR YÖNETİMİ ═══
 async function kullanicilariYukle(){
-  var r = await fetch(SUPABASE_URL+'/rest/v1/profiller?select=*,bayiler(ad)&order=ad_soyad',{headers:{'apikey':SUPABASE_KEY}});
+  var r = await fetch(SUPABASE_URL+'/rest/v1/profiller?select=*,bayiler(ad)&order=ad_soyad',{headers:hdrs()});
   var profiller = await r.json();
   if(!Array.isArray(profiller)) profiller=[];
   var tbody = document.getElementById('kullanici-tbody');
@@ -599,7 +619,7 @@ async function bayiAta(profilId, bayiId){
   var body = bayiId ? {bayi_id:bayiId} : {bayi_id:null};
   var r = await fetch(SUPABASE_URL+'/rest/v1/profiller?id=eq.'+profilId,{
     method:'PATCH',
-    headers:{'apikey':SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal'}),
     body:JSON.stringify(body)
   });
   if(r.ok) alert('Bayi ataması kaydedildi!');
@@ -610,7 +630,7 @@ async function bayiAta(profilId, bayiId){
 async function takipleriYukle(){
   var bugun = new Date().toISOString().slice(0,10);
   var r = await fetch(SUPABASE_URL+'/rest/v1/ziyaretler?select=*,profiller(ad_soyad)&sonuc=eq.takipte&takip_tarihi=lte.'+bugun+'&order=takip_tarihi.asc&limit=200',{
-    headers:{'apikey':SUPABASE_KEY}
+    headers:hdrs()
   });
   var data = await r.json();
   if(!Array.isArray(data)) data=[];
@@ -618,7 +638,7 @@ async function takipleriYukle(){
   // Gelecek 30 gün de dahil et
   var bit = new Date(); bit.setDate(bit.getDate()+30);
   var r2 = await fetch(SUPABASE_URL+'/rest/v1/ziyaretler?select=*,profiller(ad_soyad)&sonuc=eq.takipte&takip_tarihi=gt.'+bugun+'&takip_tarihi=lte.'+bit.toISOString().slice(0,10)+'&order=takip_tarihi.asc&limit=200',{
-    headers:{'apikey':SUPABASE_KEY}
+    headers:hdrs()
   });
   var data2 = await r2.json();
   if(!Array.isArray(data2)) data2=[];
