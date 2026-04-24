@@ -408,6 +408,25 @@
 
 <div id="toast"></div>
 <div id="yukleniyor" style="display:none;"><div class="spinner"></div></div>
+
+<!-- ŞİFRE BELİRLE MODALI — Davet linki tıklanınca açılır -->
+<div id="sifre-belirle-modal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:16px;padding:36px 32px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;">
+    <div style="width:56px;height:56px;background:#7ab528;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px;">🔑</div>
+    <h2 style="margin:0 0 6px;font-size:20px;color:#1a2e05;">Hoş Geldiniz!</h2>
+    <p style="margin:0 0 24px;color:#6b7280;font-size:14px;">ALGA CRM'e ilk girişiniz. Lütfen kullanmak istediğiniz şifreyi belirleyin.</p>
+    <div style="text-align:left;margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">YENİ ŞİFRE</label>
+      <input id="sb-sifre1" type="password" placeholder="En az 6 karakter" style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;box-sizing:border-box;"/>
+    </div>
+    <div style="text-align:left;margin-bottom:20px;">
+      <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">ŞİFRE TEKRAR</label>
+      <input id="sb-sifre2" type="password" placeholder="Şifreyi tekrar girin" style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;box-sizing:border-box;"/>
+    </div>
+    <div id="sb-hata" style="display:none;color:#e02424;font-size:13px;margin-bottom:14px;"></div>
+    <button onclick="sifreBelirleKaydet()" style="width:100%;padding:13px;background:#7ab528;color:white;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;">Şifremi Belirle ve Giriş Yap</button>
+  </div>
+</div>
 <div id="foto-lightbox" onclick="fotoLightboxKapat()">
   <button id="foto-lightbox-kapat" onclick="fotoLightboxKapat()">✕</button>
   <img id="foto-lightbox-img" src="" alt=""/>
@@ -910,9 +929,15 @@ sb.auth.onAuthStateChange(function(event,session){
   if(!session && event==='SIGNED_OUT'){
     window.location.href='/alga-crm/index.html';
   }
-  // Token yenilenince kullanici bilgisini guncelle (haritayi tekrar baslatma)
+  // Token yenilenince kullanici bilgisini guncelle
   if(session && event==='TOKEN_REFRESHED'){
     mevcutKullanici = session.user;
+  }
+  // Davet/şifre sıfırlama linki tıklandığında şifre belirleme ekranı göster
+  if(session && event==='PASSWORD_RECOVERY'){
+    document.getElementById('giris-ekrani').style.display='none';
+    document.getElementById('yukleniyor').style.display='none';
+    document.getElementById('sifre-belirle-modal').style.display='flex';
   }
 });
 
@@ -937,6 +962,26 @@ document.addEventListener('DOMContentLoaded',function(){
   });
 });
 document.addEventListener('click',function(e){ if(!e.target.closest('.arama-kutusu')) document.getElementById('arama-sonuclar').style.display='none'; });
+
+async function sifreBelirleKaydet(){
+  var s1 = document.getElementById('sb-sifre1').value;
+  var s2 = document.getElementById('sb-sifre2').value;
+  var hata = document.getElementById('sb-hata');
+  hata.style.display='none';
+  if(s1.length < 6){ hata.textContent='Şifre en az 6 karakter olmalı.'; hata.style.display='block'; return; }
+  if(s1 !== s2){ hata.textContent='Şifreler eşleşmiyor.'; hata.style.display='block'; return; }
+  var btn = document.querySelector('#sifre-belirle-modal button');
+  btn.disabled = true; btn.textContent = 'Kaydediliyor...';
+  var { data, error } = await sb.auth.updateUser({ password: s1 });
+  if(error){
+    hata.textContent = 'Hata: ' + error.message;
+    hata.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Şifremi Belirle ve Giriş Yap';
+    return;
+  }
+  document.getElementById('sifre-belirle-modal').style.display='none';
+  await uygulamaBaslat(data.user);
+}
 </script>
 </body>
 </html>
