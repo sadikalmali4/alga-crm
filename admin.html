@@ -266,10 +266,6 @@
         <input id="ns-email" type="email" placeholder="ahmet@alga.com.tr" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;width:180px;"/>
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;">
-        <label style="font-size:11px;font-weight:600;color:#6b7280;">GİRİŞ ŞİFRESİ</label>
-        <input id="ns-sifre" type="text" value="12134" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;width:90px;"/>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px;">
         <label style="font-size:11px;font-weight:600;color:#6b7280;">BAYİ</label>
         <select id="ns-bayi" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;width:150px;">
           <option value="">-- Bayi seç --</option>
@@ -873,16 +869,18 @@ async function saticiYonetimYukle(){
 async function yeniSaticiEkle(){
   var ad = document.getElementById('ns-ad').value.trim();
   var email = document.getElementById('ns-email').value.trim();
-  var sifre = document.getElementById('ns-sifre').value.trim() || '12134';
   var bayiId = document.getElementById('ns-bayi').value;
   var msg = document.getElementById('ns-mesaj');
   if(!ad || !email){ msg.style.color='#e02424'; msg.textContent='Ad ve e-posta zorunlu!'; return; }
-  msg.style.color='#6b7280'; msg.textContent='Oluşturuluyor...';
+  msg.style.color='#6b7280'; msg.textContent='Hesap oluşturuluyor...';
+  // Rastgele geçici şifre — kullanıcı davet linki ile kendi şifresini belirleyecek
+  var tempSifre = 'Alga' + Math.random().toString(36).slice(-8) + '!7';
   try {
+    // 1. Auth kullanıcısı oluştur
     var authR = await fetch(SUPABASE_URL+'/auth/v1/signup',{
       method:'POST',
       headers:{'apikey':SUPABASE_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({email:email, password:sifre})
+      body:JSON.stringify({email:email, password:tempSifre})
     });
     var authD = await authR.json();
     if(!authR.ok){
@@ -892,26 +890,43 @@ async function yeniSaticiEkle(){
     }
     var userId = (authD.user ? authD.user.id : null) || authD.id;
     if(!userId){ msg.style.color='#e02424'; msg.textContent='ID alınamadı. E-posta zaten kayıtlı olabilir.'; return; }
-    var profilBody = {id:userId, ad_soyad:ad, email:email};
+
+    // 2. Profil kaydı oluştur (email kolonu profiller tablosunda YOK — auth.users'da)
+    var profilBody = {id:userId, ad_soyad:ad};
     if(bayiId) profilBody.bayi_id = bayiId;
     var profilR = await fetch(SUPABASE_URL+'/rest/v1/profiller',{
       method:'POST',
       headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal'}),
       body:JSON.stringify(profilBody)
     });
-    if(profilR.ok || profilR.status===201){
-      msg.style.color='#5a8a1a';
-      msg.textContent='✓ Eklendi! Giriş: '+email+' / Şifre: '+sifre;
-      document.getElementById('ns-ad').value='';
-      document.getElementById('ns-email').value='';
-      document.getElementById('ns-sifre').value='12134';
-      document.getElementById('ns-bayi').value='';
-      await saticiYonetimYukle();
-    } else {
+    if(!profilR.ok && profilR.status!==201){
       var errText = await profilR.text();
       msg.style.color='#e02424';
       msg.textContent='Profil hatası ('+profilR.status+'): '+errText;
+      return;
     }
+
+    // 3. Kullanıcıya şifre belirleme e-postası gönder
+    msg.textContent='Davet e-postası gönderiliyor...';
+    var resetR = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://sadikalmali4.github.io/alga-crm/harita.html'
+    });
+
+    document.getElementById('ns-ad').value='';
+    document.getElementById('ns-email').value='';
+    document.getElementById('ns-bayi').value='';
+
+    if(resetR.error){
+      msg.style.color='#f59e0b';
+      msg.innerHTML='⚠️ <strong>'+ad+'</strong> eklendi fakat e-posta gönderilemedi.<br>'+
+        '<small style="color:#6b7280">'+resetR.error.message+'</small>';
+    } else {
+      msg.style.color='#5a8a1a';
+      msg.innerHTML='✅ <strong>'+ad+'</strong> eklendi!<br>'+
+        '<small style="color:#6b7280">📧 <strong>'+email+'</strong> adresine giriş bağlantısı gönderildi. '+
+        'Kullanıcı e-postasındaki bağlantıya tıklayarak kendi şifresini belirleyecek.</small>';
+    }
+    await saticiYonetimYukle();
   } catch(e){ msg.style.color='#e02424'; msg.textContent='Hata: '+e.message; }
 }
 
