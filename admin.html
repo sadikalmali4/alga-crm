@@ -828,7 +828,7 @@ async function kullanicilariYukle(){
 }
 
 async function saticiYonetimYukle(){
-  var r = await fetch(SUPABASE_URL+'/rest/v1/profiller?select=id,ad_soyad,bayi_id,rol,bayiler(ad)&order=ad_soyad',{headers:hdrs()});
+  var r = await fetch(SUPABASE_URL+'/rest/v1/profiller?select=id,ad_soyad,bayi_id,rol,email,bayiler(ad)&order=ad_soyad',{headers:hdrs()});
   var profiller = await r.json();
   if(!Array.isArray(profiller)) profiller=[];
   var tbody = document.getElementById('satici-yonetim-tbody');
@@ -861,8 +861,9 @@ async function saticiYonetimYukle(){
       '<td id="sr-bayi-lbl-'+p.id+'">'+bayiGoster+'</td>'+
       '<td class="edit-only"><select onchange="saticiiBayiGuncelle(\'' + p.id + '\',this.value)" style="padding:5px 8px;border:1.5px solid #e5e7eb;border-radius:6px;font-size:12px;">'+bayiOps+'</select></td>'+
       '<td class="edit-only" id="sr-btn-'+p.id+'">'+
-        '<button onclick="saticiDuzenle(\'' + p.id + '\')" style="background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;">✏️</button> '+
-        '<button onclick="saticiSil(\'' + p.id + '\')" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:5px 10px;font-size:12px;color:#e02424;cursor:pointer;">🗑</button>'+
+        '<button onclick="saticiDuzenle(\'' + p.id + '\')" title="Düzenle" style="background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;">✏️</button> '+
+        '<button onclick="sifirlaGonder(\'' + (p.email||'') + '\')" title="Şifre Sıfırlama E-postası Gönder" style="background:#eff6ff;border:1px solid #93c5fd;border-radius:6px;padding:5px 10px;font-size:12px;color:#1d4ed8;cursor:pointer;">📧</button> '+
+        '<button onclick="saticiSil(\'' + p.id + '\')" title="Kullanıcıyı Sil" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:5px 10px;font-size:12px;color:#e02424;cursor:pointer;">🗑</button>'+
       '</td>'+
     '</tr>';
   }).join('');
@@ -900,14 +901,30 @@ async function yeniSaticiEkle(){
     if(!authR.ok){
       var errMsg = authD.msg||authD.message||authD.error_description||'';
       if(errMsg.toLowerCase().includes('already') || errMsg.toLowerCase().includes('registered')){
+        msg.textContent='Kullanıcı bulunuyor...';
+        // Mevcut kullanıcının UUID'sini RPC ile al
+        var idR = await fetch(SUPABASE_URL+'/rest/v1/rpc/get_user_id_by_email',{
+          method:'POST',
+          headers:hdrs({'Content-Type':'application/json'}),
+          body:JSON.stringify({user_email:email})
+        });
+        var existingId = await idR.json();
+        if(existingId){
+          // Profil kaydını oluştur / güncelle
+          await fetch(SUPABASE_URL+'/rest/v1/profiller',{
+            method:'POST',
+            headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal,resolution=merge-duplicates'}),
+            body:JSON.stringify({id:existingId, ad_soyad:ad, rol:rol, email:email})
+          });
+        }
+        // Şifre sıfırlama e-postası gönder
         msg.textContent='Davet e-postası gönderiliyor...';
         await sb.auth.resetPasswordForEmail(email, {
           redirectTo: 'https://sadikalmali4.github.io/alga-crm/harita.html'
         });
         msg.style.color='#f59e0b';
-        msg.innerHTML='⚠️ <strong>'+email+'</strong> zaten sistemde kayıtlı.<br>'+
-          '<small style="color:#6b7280">📧 Şifre belirleme e-postası gönderildi. '+
-          'Rolünü listeden güncelleyebilirsiniz.</small>';
+        msg.innerHTML='⚠️ <strong>'+email+'</strong> zaten sistemde kayıtlıydı.<br>'+
+          '<small style="color:#6b7280">📧 Şifre belirleme e-postası gönderildi, profil güncellendi.</small>';
         await saticiYonetimYukle();
         return;
       }
@@ -918,8 +935,8 @@ async function yeniSaticiEkle(){
     var userId = (authD.user ? authD.user.id : null) || authD.id;
     if(!userId){ msg.style.color='#e02424'; msg.textContent='ID alınamadı.'; return; }
 
-    // 2. Profil kaydı oluştur (email kolonu profiller tablosunda YOK — auth.users'da)
-    var profilBody = {id:userId, ad_soyad:ad, rol:rol};
+    // 2. Profil kaydı oluştur
+    var profilBody = {id:userId, ad_soyad:ad, rol:rol, email:email};
     var profilR = await fetch(SUPABASE_URL+'/rest/v1/profiller',{
       method:'POST',
       headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal,resolution=merge-duplicates'}),
@@ -993,12 +1010,27 @@ async function saticiiBayiGuncelle(profilId, bayiId){
 }
 
 async function saticiSil(id){
-  if(!confirm('Bu satıcıyı silmek istediğinize emin misiniz?')) return;
-  var r = await fetch(SUPABASE_URL+'/rest/v1/profiller?id=eq.'+id,{
-    method:'DELETE', headers:hdrs()
+  if(!confirm('Bu kullanıcıyı tamamen silmek istediğinize emin misiniz?\n(Profil ve giriş hesabı silinecek)')) return;
+  var r = await fetch(SUPABASE_URL+'/rest/v1/rpc/admin_delete_user',{
+    method:'POST',
+    headers:hdrs({'Content-Type':'application/json'}),
+    body:JSON.stringify({target_id:id})
   });
   if(r.ok) await saticiYonetimYukle();
-  else alert('Silinemedi: '+r.status);
+  else {
+    var errText = await r.text();
+    alert('Silinemedi: '+errText);
+  }
+}
+
+async function sifirlaGonder(email){
+  if(!email){ alert('Bu kullanıcının e-posta adresi kayıtlı değil.'); return; }
+  if(!confirm('📧 '+email+' adresine şifre sıfırlama e-postası gönderilsin mi?')) return;
+  var {error} = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: 'https://sadikalmali4.github.io/alga-crm/harita.html'
+  });
+  if(error) alert('Hata: '+error.message);
+  else alert('✅ Şifre sıfırlama e-postası gönderildi!\n'+email);
 }
 
 async function bayiAta(profilId, bayiId){ await saticiiBayiGuncelle(profilId, bayiId); }
