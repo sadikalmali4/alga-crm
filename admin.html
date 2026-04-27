@@ -1123,11 +1123,14 @@ function eptkAra(q, ziyaretId){
       return;
     }
     sonucDiv.innerHTML = sonuclar.map(function(s){
+      var adres = (s.adres||'').trim();
+      var adresKisa = adres.length > 50 ? adres.substring(0,50)+'…' : adres;
       return '<div onclick="konumSec('+s.lat+','+s.lng+')" '+
         'style="padding:8px 10px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:4px;cursor:pointer;font-size:12px;transition:background .1s;" '+
         'onmouseover="this.style.background=\'#f0f7e6\'" onmouseout="this.style.background=\'#f9fafb\'">'+
         '<strong>'+s.adi+'</strong>'+
-        '<span style="color:#9ca3af;margin-left:6px;">'+(s.marka||'')+(s.ilce?' · '+s.ilce:'')+(s.il?' / '+s.il:'')+'</span>'+
+        '<span style="color:#3b82f6;margin-left:6px;font-size:11px;">'+s.marka+'</span>'+
+        (adresKisa ? '<div style="color:#9ca3af;font-size:11px;margin-top:2px;">📍 '+adresKisa+'</div>' : '')+
         '</div>';
     }).join('');
   }, 350);
