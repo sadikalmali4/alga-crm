@@ -189,6 +189,12 @@
   .harita-legend{position:absolute;bottom:90px;left:10px;background:white;border-radius:10px;padding:8px 12px;font-size:11px;z-index:800;box-shadow:var(--shadow-lg);border:1px solid var(--gray-200);}
   .legend-item{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
   .legend-item:last-child{margin-bottom:0;}
+
+  /* KONUM MARKERİ */
+  .konum-marker-icon{position:relative;width:18px;height:18px;}
+  .konum-marker-nokta{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:12px;height:12px;background:#2563eb;border-radius:50%;border:2.5px solid white;box-shadow:0 0 0 2px #2563eb;z-index:2;}
+  .konum-marker-halka{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;background:rgba(37,99,235,.2);animation:konum-pulse 1.8s ease-out infinite;}
+  @keyframes konum-pulse{0%{transform:translate(-50%,-50%) scale(.5);opacity:1;}100%{transform:translate(-50%,-50%) scale(2);opacity:0;}}
   .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
 
   /* DİĞER */
@@ -275,6 +281,8 @@
     <button onclick="ziyaretFiltrele('ziyaret_edilenler')" id="zf-edilenler" style="padding:4px 8px;border-radius:6px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:11px;cursor:pointer;">🔴 Ziyaret Edilenler</button>
     <button onclick="ziyaretFiltrele('ziyaret_edilmeyenler')" id="zf-edilmeyenler" style="padding:4px 8px;border-radius:6px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:11px;cursor:pointer;">🟢 Ziyaret Edilmeyenler</button>
   </div>
+  <div style="border-top:1px solid #e5e7eb;margin:8px 0 6px;"></div>
+  <button onclick="konumGoster()" id="konum-btn" style="width:100%;padding:5px 8px;border-radius:6px;border:1.5px solid #3b82f6;background:#eff6ff;color:#1d4ed8;font-size:11px;cursor:pointer;font-weight:600;">📍 Konumumu Göster</button>
 </div>
 
 <!-- CRM PANELİ -->
@@ -957,6 +965,70 @@ async function gecmisYukle() {
   } catch(e) {
     liste.innerHTML='<div class="bos-durum">Yüklenemedi: '+e.message+'</div>';
   }
+}
+
+// ——— KONUM ———
+var _konumMarker = null;
+var _konumDaire = null;
+
+function konumGoster(){
+  var btn = document.getElementById('konum-btn');
+  if(!navigator.geolocation){ toast('Tarayıcınız konum desteklemiyor'); return; }
+
+  // Zaten gösteriliyorsa kaldır
+  if(_konumMarker){
+    map.removeLayer(_konumMarker);
+    if(_konumDaire) map.removeLayer(_konumDaire);
+    _konumMarker = null; _konumDaire = null;
+    btn.style.background='#eff6ff'; btn.style.color='#1d4ed8';
+    btn.textContent='📍 Konumumu Göster';
+    return;
+  }
+
+  btn.textContent='⏳ Konum alınıyor...';
+  btn.style.background='#dbeafe'; btn.style.color='#1e40af';
+
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      var lat = pos.coords.latitude;
+      var lng = pos.coords.longitude;
+      var acc = pos.coords.accuracy;
+
+      // Mavi nokta + halkalar icon
+      var icon = L.divIcon({
+        className:'',
+        html:'<div class="konum-marker-icon"><div class="konum-marker-halka"></div><div class="konum-marker-nokta"></div></div>',
+        iconSize:[18,18],
+        iconAnchor:[9,9]
+      });
+
+      _konumMarker = L.marker([lat,lng],{icon:icon,zIndexOffset:1000})
+        .addTo(map)
+        .bindPopup('<strong>📍 Konumunuz</strong><br><small style="color:#6b7280">Hassasiyet: ~'+Math.round(acc)+' m</small>',{closeButton:false});
+
+      // Doğruluk çemberi
+      _konumDaire = L.circle([lat,lng],{
+        radius:acc,
+        color:'#2563eb',
+        fillColor:'#2563eb',
+        fillOpacity:.08,
+        weight:1.5
+      }).addTo(map);
+
+      map.setView([lat,lng], 13);
+      _konumMarker.openPopup();
+
+      btn.textContent='📍 Konumumu Gizle';
+      btn.style.background='#2563eb'; btn.style.color='white';
+    },
+    function(err){
+      btn.textContent='📍 Konumumu Göster';
+      btn.style.background='#eff6ff'; btn.style.color='#1d4ed8';
+      if(err.code===1) toast('Konum izni reddedildi. Tarayıcı ayarlarından izin verin.');
+      else toast('Konum alınamadı: '+err.message);
+    },
+    {enableHighAccuracy:true, timeout:10000, maximumAge:0}
+  );
 }
 
 // ——— DİĞER ———
