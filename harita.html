@@ -569,7 +569,8 @@ function istasyonlariHaritayaEkle() {
     var r = ziyaretRenkMap[ist.adi] ? 7 : 5;
     var marker = L.circleMarker([ist.lat,ist.lng],{radius:r,fillColor:renk,color:'white',weight:1.5,opacity:1,fillOpacity:0.9});
     marker.on('click',function(e){ e.originalEvent.stopPropagation(); istasyonSec(ist); });
-    marker.bindTooltip(ist.marka+' — '+ist.adi.substring(0,40),{direction:'top',offset:[0,-8]});
+    var ttKonum = [ist.ilce, ist.il].filter(Boolean).join(' / ');
+    marker.bindTooltip(ist.marka+' — '+ist.adi.substring(0,40)+(ttKonum?' · '+ttKonum:''),{direction:'top',offset:[0,-8]});
     markerLayerMap[ist.adi] = marker;
     _tumMarkerlar.push({marker:marker, ist:ist});
     _clusterGroup.addLayer(marker);
