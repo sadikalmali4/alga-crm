@@ -268,6 +268,7 @@
 <div class="harita-legend" id="harita-legend" style="display:none;">
   <div style="font-size:10px;font-weight:700;color:#6b7280;margin-bottom:6px;text-transform:uppercase;">Renk Anlamları</div>
   <div class="legend-item"><div class="legend-dot" style="background:#7ab528"></div>Ziyaret yok</div>
+  <div class="legend-item"><div style="width:10px;height:10px;background:#ef4444;border:1.5px solid white;border-radius:2px;transform:rotate(45deg);flex-shrink:0;"></div>İçe aktarılan ziyaret</div>
   <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Sıcak</div>
   <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Anlaştı</div>
   <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div>Teklif verildi</div>
@@ -529,10 +530,15 @@ function haritaBaslat() {
     .then(function(r){return r.json();})
     .then(function(data){
       ISTASYON_DATA = data;
-      fetch(SUPABASE_URL+'/rest/v1/ziyaretler?select=istasyon_adi,sonuc&order=created_at.desc&limit=5000',{headers:{'apikey':SUPABASE_KEY}})
+      fetch(SUPABASE_URL+'/rest/v1/ziyaretler?select=id,istasyon_adi,istasyon_marka,sonuc,istasyon_lat,istasyon_lng,not_metni&order=created_at.desc&limit=5000',{headers:{'apikey':SUPABASE_KEY}})
         .then(function(r){return r.json();}).then(function(zv){
-          if(Array.isArray(zv)) zv.forEach(function(z){ if(!ziyaretRenkMap[z.istasyon_adi]) ziyaretRenkMap[z.istasyon_adi]=z.sonuc; });
-          istasyonlariHaritayaEkle();
+          if(Array.isArray(zv)){
+            zv.forEach(function(z){ if(!ziyaretRenkMap[z.istasyon_adi]) ziyaretRenkMap[z.istasyon_adi]=z.sonuc; });
+            istasyonlariHaritayaEkle();
+            ziyaretKonumMarkerEkle(zv);
+          } else {
+            istasyonlariHaritayaEkle();
+          }
         }).catch(function(){ istasyonlariHaritayaEkle(); });
     })
     .catch(function(e){ console.error('JSON yüklenemedi:',e); });
@@ -571,6 +577,41 @@ function istasyonlariHaritayaEkle() {
   map.addLayer(_clusterGroup);
   istasyonlar = ISTASYON_DATA;
   console.log('Haritaya eklendi:',ISTASYON_DATA.length);
+}
+
+// Koordinatı olan ziyaretleri haritaya ekle (EPDK listesinde olmayan ziyaretler)
+var _epdk_adlari = null;
+function ziyaretKonumMarkerEkle(ziyaretler){
+  if(!_clusterGroup || !ziyaretler) return;
+  // EPDK istasyon adlarını set olarak al
+  if(!_epdk_adlari){
+    _epdk_adlari = new Set(ISTASYON_DATA.map(function(s){ return s.adi; }));
+  }
+  var SONUC_LBL = {sicak:'🔥 Sıcak', kararsiz:'❓ Kararsız', soguk:'❄️ Soğuk', teklif:'📋 Teklif', takip:'🔄 Takip', anlasma:'✅ Anlaştı'};
+  ziyaretler.forEach(function(z){
+    if(!z.istasyon_lat || !z.istasyon_lng) return;
+    // EPDK'da zaten varsa ekleme (renk zaten değişiyor)
+    if(_epdk_adlari && _epdk_adlari.has(z.istasyon_adi)) return;
+    var renk = SONUC_RENK[z.sonuc] || SONUC_RENK.default;
+    // Kare/baklava şeklinde icon — EPDK yuvarlak markerlardan ayrışır
+    var icon = L.divIcon({
+      className:'',
+      html:'<div style="width:14px;height:14px;background:'+renk+';border:2.5px solid white;border-radius:3px;box-shadow:0 0 0 1.5px '+renk+';transform:rotate(45deg);"></div>',
+      iconSize:[14,14],
+      iconAnchor:[7,7]
+    });
+    var popup = '<div style="font-size:13px;min-width:160px;">'+
+      '<strong>'+(z.istasyon_adi||'—')+'</strong>'+
+      (z.istasyon_marka ? '<span style="color:#6b7280;margin-left:6px;font-size:11px;">'+z.istasyon_marka+'</span>' : '')+
+      '<div style="margin-top:4px;font-size:11px;color:'+renk+';">'+( SONUC_LBL[z.sonuc]||z.sonuc||'—')+'</div>'+
+      (z.not_metni ? '<div style="margin-top:4px;font-size:11px;color:#6b7280;max-width:200px;">'+z.not_metni.substring(0,80)+(z.not_metni.length>80?'…':'')+'</div>' : '')+
+      '</div>';
+    var marker = L.marker([z.istasyon_lat, z.istasyon_lng], {icon:icon});
+    marker.bindPopup(popup);
+    marker.bindTooltip((z.istasyon_adi||'Ziyaret')+(z.istasyon_marka?' — '+z.istasyon_marka:''), {direction:'top', offset:[0,-8]});
+    _clusterGroup.addLayer(marker);
+    _tumMarkerlar.push({marker:marker, ist:{lat:z.istasyon_lat, lng:z.istasyon_lng, adi:z.istasyon_adi, marka:z.istasyon_marka}, ziyaret:true, sonuc:z.sonuc});
+  });
 }
 
 function ziyaretFiltrele(mod) {
