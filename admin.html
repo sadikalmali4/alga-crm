@@ -680,6 +680,45 @@ function ziyaretDetayAc(id){
   if(z.katalog_birakildi) html += '<div style="background:#f0f7e6;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;color:#5a8a1a;">✓ Katalog bırakıldı</div>';
   if(z.not_metni) html += '<div style="background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:12px;font-size:13px;color:#4b5563;line-height:1.6;"><strong style="color:#1f2937;">Not: </strong>'+z.not_metni+'</div>';
   if(z.foto_url) html += '<img src="'+z.foto_url+'" style="width:100%;max-height:220px;object-fit:cover;border-radius:10px;cursor:pointer;" onclick="window.open(this.src,\'_blank\')" title="Büyütmek için tıklayın"/>';
+
+  // Admin: Konum Ekle/Düzenle paneli
+  if(_mevcutRol === 'admin'){
+    var hasKonum = z.istasyon_lat && z.istasyon_lng;
+    var latVal = z.istasyon_lat || '';
+    var lngVal = z.istasyon_lng || '';
+    html +=
+      '<div style="border-top:1px solid #e5e7eb;margin-top:18px;padding-top:16px;">'+
+      '<div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">'+
+        '📍 Konum '+
+        (hasKonum
+          ? '<span style="color:#7ab528;font-weight:500;text-transform:none;">✓ Kayıtlı ('+parseFloat(latVal).toFixed(4)+', '+parseFloat(lngVal).toFixed(4)+')</span>'
+          : '<span style="color:#f59e0b;font-weight:500;text-transform:none;">⚠ Konum yok — haritada görünmez</span>')+
+      '</div>'+
+      // EPDK arama
+      '<div style="margin-bottom:8px;">'+
+        '<input type="text" id="konum-ara" placeholder="🔍 EPDK istasyonu adıyla ara..." '+
+          'oninput="eptkAra(this.value,\''+z.id+'\')" '+
+          'style="width:100%;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" '+
+          'onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'"/>'+
+      '</div>'+
+      '<div id="konum-ara-sonuc" style="margin-bottom:10px;"></div>'+
+      // Manuel koordinat girişi
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">'+
+        '<div><label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:3px;">Enlem (Lat)</label>'+
+          '<input type="number" id="konum-lat" step="0.000001" value="'+latVal+'" placeholder="ör: 39.925533" '+
+            'style="width:100%;padding:8px 11px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" '+
+            'onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'"/></div>'+
+        '<div><label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:3px;">Boylam (Lng)</label>'+
+          '<input type="number" id="konum-lng" step="0.000001" value="'+lngVal+'" placeholder="ör: 32.866287" '+
+            'style="width:100%;padding:8px 11px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" '+
+            'onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'"/></div>'+
+      '</div>'+
+      '<button onclick="konumKaydet(\''+z.id+'\')" '+
+        'style="width:100%;background:#7ab528;color:white;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">'+
+        '💾 Konumu Kaydet</button>'+
+      '</div>';
+  }
+
   document.getElementById('detay-icerik').innerHTML = html;
   document.getElementById('detay-modal').style.display = 'flex';
 }
@@ -1051,6 +1090,81 @@ async function ziyaretSil(id){
     raporFiltrele();
   } else {
     alert('Silinemedi: '+r.status);
+  }
+}
+
+// ═══ KONUM YÖNETİMİ ═══
+var _istasyonJson = null;
+var _konumAraTimer = null;
+
+async function _istasyonJsonYukle(){
+  if(_istasyonJson) return _istasyonJson;
+  try {
+    var r = await fetch('https://sadikalmali4.github.io/alga-crm/istasyonlar.json');
+    _istasyonJson = await r.json();
+  } catch(e){ _istasyonJson = []; }
+  return _istasyonJson;
+}
+
+function eptkAra(q, ziyaretId){
+  clearTimeout(_konumAraTimer);
+  var sonucDiv = document.getElementById('konum-ara-sonuc');
+  if(!sonucDiv) return;
+  if(!q || q.length < 2){ sonucDiv.innerHTML=''; return; }
+  sonucDiv.innerHTML = '<div style="font-size:12px;color:#9ca3af;padding:4px 0;">Aranıyor...</div>';
+  _konumAraTimer = setTimeout(async function(){
+    var data = await _istasyonJsonYukle();
+    var q2 = q.toLowerCase().replace(/\s+/g,' ').trim();
+    var sonuclar = data.filter(function(s){
+      return s.adi && s.adi.toLowerCase().includes(q2) && s.lat && s.lng;
+    }).slice(0,6);
+    if(!sonuclar.length){
+      sonucDiv.innerHTML='<div style="font-size:12px;color:#9ca3af;padding:4px 0;">Sonuç bulunamadı</div>';
+      return;
+    }
+    sonucDiv.innerHTML = sonuclar.map(function(s){
+      return '<div onclick="konumSec('+s.lat+','+s.lng+')" '+
+        'style="padding:8px 10px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:4px;cursor:pointer;font-size:12px;transition:background .1s;" '+
+        'onmouseover="this.style.background=\'#f0f7e6\'" onmouseout="this.style.background=\'#f9fafb\'">'+
+        '<strong>'+s.adi+'</strong>'+
+        '<span style="color:#9ca3af;margin-left:6px;">'+(s.marka||'')+(s.ilce?' · '+s.ilce:'')+(s.il?' / '+s.il:'')+'</span>'+
+        '</div>';
+    }).join('');
+  }, 350);
+}
+
+function konumSec(lat, lng){
+  var latInp = document.getElementById('konum-lat');
+  var lngInp = document.getElementById('konum-lng');
+  var sonucDiv = document.getElementById('konum-ara-sonuc');
+  var araInp = document.getElementById('konum-ara');
+  if(latInp) latInp.value = lat;
+  if(lngInp) lngInp.value = lng;
+  if(araInp) araInp.value = '';
+  if(sonucDiv) sonucDiv.innerHTML =
+    '<div style="color:#7ab528;font-size:12px;padding:4px 0;">✓ Koordinatlar seçildi: '+
+    parseFloat(lat).toFixed(5)+', '+parseFloat(lng).toFixed(5)+'</div>';
+}
+
+async function konumKaydet(id){
+  var lat = parseFloat(document.getElementById('konum-lat').value);
+  var lng = parseFloat(document.getElementById('konum-lng').value);
+  if(isNaN(lat)||isNaN(lng)||!lat||!lng){
+    alert('Lütfen geçerli koordinat girin veya listeden bir istasyon seçin.');
+    return;
+  }
+  var r = await fetch(SUPABASE_URL+'/rest/v1/ziyaretler?id=eq.'+id, {
+    method:'PATCH',
+    headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal'}),
+    body:JSON.stringify({istasyon_lat:lat, istasyon_lng:lng})
+  });
+  if(r.ok){
+    var z = tumVeriler.find(function(x){ return x.id===id; });
+    if(z){ z.istasyon_lat=lat; z.istasyon_lng=lng; }
+    document.getElementById('detay-modal').style.display='none';
+    alert('✅ Konum kaydedildi! Haritada görünmesi için sayfayı yenileyin.');
+  } else {
+    alert('Hata: '+r.status);
   }
 }
 
