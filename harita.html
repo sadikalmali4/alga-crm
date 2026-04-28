@@ -403,7 +403,16 @@
       <div class="teklif-bolum" id="alan-teklif" style="display:none;">
         <div class="teklif-bolum-baslik">📋 Teklif Detayları</div>
         <div class="f-grid">
-          <div class="f-grup"><label>Teklif Tutarı (₺)</label><input type="number" id="f-teklif-tutar" placeholder="0"/></div>
+          <div class="f-grup"><label>Teklif Tutarı</label>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <input type="number" id="f-teklif-tutar" placeholder="0" style="flex:1;"/>
+              <select id="f-teklif-para" style="padding:8px 6px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:13px;font-family:inherit;background:white;cursor:pointer;">
+                <option value="TL">₺ TL</option>
+                <option value="EUR">€ EUR</option>
+                <option value="USD">$ USD</option>
+              </select>
+            </div>
+          </div>
           <div class="f-grup"><label>Geçerlilik Tarihi</label><input type="date" id="f-teklif-tarih"/></div>
         </div>
         <div class="f-grup"><label>Rakip Fiyat (₺)</label><input type="number" id="f-rakip-fiyat" placeholder="0"/></div>
@@ -751,7 +760,7 @@ function otosaveSil(){ try { localStorage.removeItem('alga_crm_draft'); } catch(
 function formTemizle() {
   otosaveSil();
   ['f-yetkili','f-unvan','f-arac-sayisi','f-fiyat-oto','f-fiyat-self','f-not','f-takip','f-rakip',
-   'f-teklif-tutar','f-teklif-tarih','f-rakip-fiyat',
+   'f-teklif-tutar','f-teklif-tarih','f-rakip-fiyat','f-teklif-para',
    'f-su-sertlik','f-su-ph','f-su-ppm','f-su-ec'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
@@ -917,6 +926,7 @@ async function ziyaretKaydet() {
       foto_url:fotoUrl,
       rakip_ekipman:document.getElementById('f-rakip').value||null,
       teklif_tutari:parseFloat(document.getElementById('f-teklif-tutar').value)||null,
+      teklif_para_birimi:document.getElementById('f-teklif-para').value||'TL',
       teklif_tarihi:document.getElementById('f-teklif-tarih').value||null,
       rakip_fiyat:parseFloat(document.getElementById('f-rakip-fiyat').value)||null,
       su_sertlik:parseFloat(document.getElementById('f-su-sertlik').value)||null,
@@ -974,7 +984,8 @@ async function gecmisYukle() {
       // Teklif kutusu
       var teklifHtml='';
       if(z.teklif_tutari){
-        teklifHtml='<div class="gecmis-teklif">💰 Teklif: <strong>₺'+z.teklif_tutari.toLocaleString('tr-TR')+'</strong>';
+        var paraSembol = z.teklif_para_birimi==='EUR' ? '€' : z.teklif_para_birimi==='USD' ? '$' : '₺';
+        teklifHtml='<div class="gecmis-teklif">💰 Teklif: <strong>'+paraSembol+z.teklif_tutari.toLocaleString('tr-TR')+'</strong>';
         if(z.teklif_tarihi) teklifHtml+=' &nbsp;📅 Geçerli: '+z.teklif_tarihi;
         if(z.rakip_fiyat) teklifHtml+='<br>🏷 Rakip fiyat: ₺'+z.rakip_fiyat;
         teklifHtml+='</div>';
