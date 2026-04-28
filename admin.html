@@ -610,7 +610,7 @@ function tabloGuncelle(veriler){
       '<td style="max-width:180px;word-break:break-word;font-size:13px;">'+( z.istasyon_adi||'—')+'</td>'+
       '<td style="font-size:12px;color:#6b7280;">'+bayiAd+'</td>'+
       '<td><span class="badge '+badge+'">'+lbl+'</span></td>'+
-      '<td style="font-size:13px;">'+(z.teklif_tutari ? z.teklif_tutari.toLocaleString('tr-TR')+' ₺':'—')+'</td>'+
+      '<td style="font-size:13px;">'+(z.teklif_tutari ? z.teklif_tutari.toLocaleString('tr-TR')+(z.teklif_para_birimi==='EUR'?' €':z.teklif_para_birimi==='USD'?' $':' ₺'):'—')+'</td>'+
       '<td style="max-width:150px;font-size:11px;color:#6b7280;">'+(z.not_metni ? z.not_metni.substring(0,60)+(z.not_metni.length>60?'...':''):'—')+'</td>'+
       '<td style="text-align:center;font-size:16px;">👁</td>'+
       (_mevcutRol==='admin' ? '<td style="text-align:center;" class="edit-only"><button onclick="event.stopPropagation();ziyaretSil(\''+z.id+'\')" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:4px 8px;font-size:12px;color:#e02424;cursor:pointer;">🗑</button></td>' : '<td class="edit-only"></td>')+
@@ -666,7 +666,7 @@ function ziyaretDetayAc(id){
   html += dkart('Bölge', bolge);
   html += dkart('Marka', z.istasyon_marka||'—');
   html += dkart('Sonuç', '<span class="badge '+badge+'">'+lbl+'</span>');
-  if(z.teklif_tutari) html += dkart('Teklif', z.teklif_tutari.toLocaleString('tr-TR')+' ₺');
+  if(z.teklif_tutari){ var ps=z.teklif_para_birimi==='EUR'?'€':z.teklif_para_birimi==='USD'?'$':'₺'; html += dkart('Teklif', z.teklif_tutari.toLocaleString('tr-TR')+' '+ps); }
   if(z.takip_tarihi) html += dkart('Takip', z.takip_tarihi);
   if(z.urun) html += dkart('Ürünler', z.urun);
   if(z.yetkili_adi) html += dkart('Yetkili', z.yetkili_adi);
