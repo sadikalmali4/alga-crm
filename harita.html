@@ -7,6 +7,8 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root {
     --blue:#7ab528;--blue-dark:#5a8a1a;--blue-light:#f0f7e6;
@@ -146,8 +148,53 @@
   .sonuc-btn.secili-takipte{background:#fff7ed;border-color:#fdba74;color:var(--orange);}
 
   /* TEKLİF ALANI */
-  .teklif-bolum{background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:10px;padding:12px;margin-bottom:12px;}
-  .teklif-bolum-baslik{font-size:11px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;}
+  .teklif-bolum{background:#faf8ff;border:1.5px solid #ddd6fe;border-radius:12px;padding:14px;margin-bottom:12px;}
+  .teklif-bolum-baslik{font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;}
+  .teklif-tutar-satir{display:flex;gap:8px;align-items:stretch;margin-bottom:10px;}
+  .teklif-tutar-input{flex:1;padding:10px 14px;border:1.5px solid #ddd6fe;border-radius:9px;font-size:20px;font-weight:700;font-family:inherit;outline:none;background:white;color:#1f2937;min-width:0;}
+  .teklif-tutar-input:focus{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,.12);}
+  .teklif-tutar-input::placeholder{font-size:16px;font-weight:400;color:#d1d5db;}
+  .para-grup{display:flex;border:1.5px solid #ddd6fe;border-radius:9px;overflow:hidden;background:white;flex-shrink:0;}
+  .para-btn{width:42px;border:none;background:white;color:#8b5cf6;font-size:15px;font-weight:800;cursor:pointer;transition:all .15s;font-family:inherit;letter-spacing:-.01em;}
+  .para-btn+.para-btn{border-left:1px solid #ede9fe;}
+  .para-btn:hover{background:#f5f3ff;}
+  .para-btn.para-aktif{background:#8b5cf6;color:white;}
+  .teklif-tarih-satir{display:flex;align-items:center;gap:8px;}
+  .teklif-tarih-label{font-size:11px;color:#a78bfa;white-space:nowrap;font-weight:600;}
+  .teklif-tarih-input{flex:1;padding:6px 10px;border:1.5px solid #ede9fe;border-radius:8px;font-size:12px;font-family:inherit;outline:none;color:var(--gray-600);background:white;}
+  .teklif-tarih-input:focus{border-color:#8b5cf6;}
+
+  /* TEKLİF DURUMU */
+  .teklif-durum-baslik{font-size:10px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;margin-top:10px;}
+  .teklif-durum-grup{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+  .teklif-durum-btn{padding:8px 4px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;background:white;text-align:center;transition:all .15s;color:var(--gray-600);}
+  .teklif-durum-btn.aktif-beklemede{background:#fff7ed;border-color:#fdba74;color:#ea580c;}
+  .teklif-durum-btn.aktif-kabul{background:#f0fdf4;border-color:#86efac;color:#16a34a;}
+  .teklif-durum-btn.aktif-red{background:#fef2f2;border-color:#fca5a5;color:#dc2626;}
+  .badge-kabul{background:#f0fdf4;color:#16a34a;}
+  .badge-red{background:#fef2f2;color:#dc2626;}
+  .badge-beklemede{background:#fff7ed;color:#ea580c;}
+  /* Gecmis PDF butonu */
+  .gecmis-teklif{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .gecmis-teklif-bilgi{flex:1;}
+  .pdf-btn{font-size:11px;font-weight:600;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:6px;padding:4px 8px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+  .pdf-btn:hover{background:#ede9fe;}
+
+  /* DASHBOARD */
+  #dashboard-modal{position:fixed;inset:0;z-index:10500;background:#f9fafb;display:none;flex-direction:column;overflow-y:auto;}
+  #dashboard-modal.acik{display:flex;}
+  .dash-toolbar{background:#5a8a1a;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;box-shadow:0 2px 8px rgba(90,138,26,.3);}
+  .dash-toolbar h2{color:white;font-size:16px;font-weight:700;flex:1;margin:0;}
+  .dash-kapat-btn{background:rgba(255,255,255,.2);border:none;color:white;width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .dash-govde{padding:16px;max-width:800px;margin:0 auto;width:100%;box-sizing:border-box;}
+  .dash-kartlar{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+  @media(min-width:500px){.dash-kartlar{grid-template-columns:repeat(4,1fr);}}
+  .dash-kart{background:white;border-radius:14px;padding:16px 12px;border:1px solid var(--gray-200);text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+  .dash-kart-sayi{font-size:32px;font-weight:800;line-height:1.1;}
+  .dash-kart-etiket{font-size:11px;color:var(--gray-400);margin-top:4px;font-weight:500;}
+  .dash-grafik-kart{background:white;border-radius:14px;padding:16px;border:1px solid var(--gray-200);margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+  .dash-grafik-baslik{font-size:13px;font-weight:700;color:var(--gray-800);margin-bottom:14px;}
+  .dash-bos{text-align:center;padding:60px 20px;color:var(--gray-400);font-size:14px;}
 
   /* SU ANALİZ BOLUMU */
   .su-analiz-bolum{background:#eff6ff;border:1.5px solid #93c5fd;border-radius:10px;padding:12px;margin-bottom:8px;}
@@ -257,7 +304,8 @@
     <button class="konum-btn" onclick="konumaGit()" title="Konumuma git">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>
     </button>
-    <a class="admin-btn" id="admin-link" href="/alga-crm/admin.html" title="Rapor Paneli" style="display:none;">📊</a>
+    <button class="admin-btn" onclick="dashboardAc()" title="İstatistikler" style="font-size:17px;">📈</button>
+    <a class="admin-btn" id="admin-link" href="/alga-crm/admin.html" title="Admin Paneli" style="display:none;">⚙️</a>
     <button class="profil-btn" id="profil-btn" onclick="cikisYap()">?</button>
   </div>
   <div id="harita"></div>
@@ -402,19 +450,23 @@
       <!-- TEKLİF TUTARI — her zaman görünür -->
       <div class="teklif-bolum" id="alan-teklif">
         <div class="teklif-bolum-baslik">💰 Teklif Tutarı</div>
-        <div class="f-grid">
-          <div class="f-grup">
-            <div style="display:flex;gap:6px;align-items:center;">
-              <input type="number" id="f-teklif-tutar" placeholder="0" style="flex:1;"/>
-              <select id="f-teklif-para" style="padding:8px 6px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:13px;font-family:inherit;background:white;cursor:pointer;">
-                <option value="TL">₺ TL</option>
-                <option value="EUR">€ EUR</option>
-                <option value="USD">$ USD</option>
-              </select>
-            </div>
+        <div class="teklif-tutar-satir">
+          <input type="number" id="f-teklif-tutar" class="teklif-tutar-input" placeholder="Tutar girin…"/>
+          <div class="para-grup">
+            <button type="button" class="para-btn para-aktif" id="para-TL" onclick="paraSec('TL')">₺</button>
+            <button type="button" class="para-btn" id="para-EUR" onclick="paraSec('EUR')">€</button>
+            <button type="button" class="para-btn" id="para-USD" onclick="paraSec('USD')">$</button>
           </div>
-          <div class="f-grup"><label>Geçerlilik Tarihi</label><input type="date" id="f-teklif-tarih"/></div>
         </div>
+        <input type="hidden" id="f-teklif-para" value="TL"/>
+        <input type="hidden" id="f-teklif-tarih"/>
+        <div class="teklif-durum-baslik">Teklif Durumu</div>
+        <div class="teklif-durum-grup">
+          <button type="button" class="teklif-durum-btn aktif-beklemede" id="td-beklemede" onclick="teklifDurumSec('beklemede')">⏳ Beklemede</button>
+          <button type="button" class="teklif-durum-btn" id="td-kabul" onclick="teklifDurumSec('kabul')">✅ Kabul</button>
+          <button type="button" class="teklif-durum-btn" id="td-red" onclick="teklifDurumSec('red')">❌ Red</button>
+        </div>
+        <input type="hidden" id="f-teklif-durumu" value="beklemede"/>
       </div>
 
       <!-- KATALOG + FOTO -->
@@ -432,6 +484,46 @@
       <button class="kaydet-btn" id="kaydet-btn" onclick="ziyaretKaydet()">Ziyareti Kaydet</button>
     </div>
     <div id="tab-gecmis" style="display:none;"><div id="gecmis-liste"></div></div>
+  </div>
+</div>
+
+<!-- DASHBOARD MODALI -->
+<div id="dashboard-modal">
+  <div class="dash-toolbar">
+    <h2>📈 İstatistikler</h2>
+    <button class="dash-kapat-btn" onclick="dashboardKapat()">✕</button>
+  </div>
+  <div class="dash-govde">
+    <div class="dash-kartlar">
+      <div class="dash-kart">
+        <div class="dash-kart-sayi" id="d-toplam" style="color:#7ab528;">—</div>
+        <div class="dash-kart-etiket">Toplam Ziyaret</div>
+      </div>
+      <div class="dash-kart">
+        <div class="dash-kart-sayi" id="d-teklif" style="color:#8b5cf6;">—</div>
+        <div class="dash-kart-etiket">Teklif Verilen</div>
+      </div>
+      <div class="dash-kart">
+        <div class="dash-kart-sayi" id="d-anlasma" style="color:#0e9f6e;">—</div>
+        <div class="dash-kart-etiket">Anlaşma</div>
+      </div>
+      <div class="dash-kart">
+        <div class="dash-kart-sayi" id="d-donusum" style="color:#f59e0b;">—</div>
+        <div class="dash-kart-etiket">Teklif→Anlaşma</div>
+      </div>
+    </div>
+    <div class="dash-grafik-kart">
+      <div class="dash-grafik-baslik">📅 Son 6 Ay — Ziyaret Sayısı</div>
+      <canvas id="chart-aylik" height="120"></canvas>
+    </div>
+    <div class="dash-grafik-kart">
+      <div class="dash-grafik-baslik">🎯 Ziyaret Sonucu Dağılımı</div>
+      <canvas id="chart-sonuc" height="180"></canvas>
+    </div>
+    <div class="dash-grafik-kart" id="dash-teklif-durumu-kart" style="display:none;">
+      <div class="dash-grafik-baslik">💰 Teklif Durumu</div>
+      <canvas id="chart-teklif-durum" height="140"></canvas>
+    </div>
   </div>
 </div>
 
@@ -669,6 +761,15 @@ function tabDegistir(tab) {
   document.getElementById('tab-gecmis').style.display = tab==='gecmis'?'block':'none';
   if(tab==='gecmis') gecmisYukle();
 }
+function paraSec(para) {
+  document.getElementById('f-teklif-para').value = para;
+  ['TL','EUR','USD'].forEach(function(p){
+    var btn = document.getElementById('para-'+p);
+    if(!btn) return;
+    btn.classList.toggle('para-aktif', p===para);
+  });
+}
+
 function sonucSec(btn, deger) {
   document.querySelectorAll('.sonuc-btn').forEach(function(b){b.className='sonuc-btn';});
   btn.classList.add('secili-'+deger);
@@ -708,7 +809,7 @@ function secilenUrunleriAl() {
 // ——— OTOMATIK KAYIT (localStorage taslak) ———
 var _otosaveTimer = null;
 var FORM_ALANLARI = ['f-yetkili','f-unvan','f-arac-sayisi','f-fiyat-oto','f-fiyat-self','f-not','f-takip','f-rakip',
-  'f-teklif-tutar','f-teklif-tarih','f-su-sertlik','f-su-ph','f-su-ppm','f-su-ec'];
+  'f-teklif-tutar','f-teklif-tarih','f-teklif-para','f-su-sertlik','f-su-ph','f-su-ppm','f-su-ec'];
 
 function otosaveBaslat(){
   FORM_ALANLARI.forEach(function(id){
@@ -758,10 +859,12 @@ function otosaveSil(){ try { localStorage.removeItem('alga_crm_draft'); } catch(
 function formTemizle() {
   otosaveSil();
   ['f-yetkili','f-unvan','f-arac-sayisi','f-fiyat-oto','f-fiyat-self','f-not','f-takip','f-rakip',
-   'f-teklif-tutar','f-teklif-tarih','f-teklif-para',
+   'f-teklif-tutar','f-teklif-tarih',
    'f-su-sertlik','f-su-ph','f-su-ppm','f-su-ec'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
+  paraSec('TL');
+  teklifDurumSec('beklemede');
   document.querySelectorAll('.urun-check input[type=checkbox]').forEach(function(cb){
     cb.checked=false;
     var lbl=cb.closest('.urun-check'); if(lbl) lbl.classList.remove('secili');
@@ -925,6 +1028,7 @@ async function ziyaretKaydet() {
       teklif_tutari:parseFloat(document.getElementById('f-teklif-tutar').value)||null,
       teklif_para_birimi:document.getElementById('f-teklif-para').value||'TL',
       teklif_tarihi:document.getElementById('f-teklif-tarih').value||null,
+      teklif_durumu:parseFloat(document.getElementById('f-teklif-tutar').value)?document.getElementById('f-teklif-durumu').value||'beklemede':null,
       su_sertlik:parseFloat(document.getElementById('f-su-sertlik').value)||null,
       su_ph:parseFloat(document.getElementById('f-su-ph').value)||null,
       su_ppm:parseFloat(document.getElementById('f-su-ppm').value)||null,
@@ -965,6 +1069,7 @@ async function gecmisYukle() {
     ]);
     var data=await r.json();
     if(!data||!data.length){ liste.innerHTML='<div class="bos-durum">Bu istasyona henüz ziyaret kaydı yok</div>'; return; }
+    _gecmisData = data;
     var etiket={
       sicak:['badge-sicak','🔥 Sıcak'],kararsiz:['badge-kararsiz','⚪ Kararsız'],
       soguk:['badge-soguk','🔵 Soğuk'],anlasma:['badge-anlasma','✅ Anlaştı'],
@@ -980,10 +1085,18 @@ async function gecmisYukle() {
       // Teklif kutusu
       var teklifHtml='';
       if(z.teklif_tutari){
-        var paraSembol = z.teklif_para_birimi==='EUR' ? '€' : z.teklif_para_birimi==='USD' ? '$' : '₺';
-        teklifHtml='<div class="gecmis-teklif">💰 Teklif: <strong>'+paraSembol+z.teklif_tutari.toLocaleString('tr-TR')+'</strong>';
-        if(z.teklif_tarihi) teklifHtml+=' &nbsp;📅 Geçerli: '+z.teklif_tarihi;
-        teklifHtml+='</div>';
+        var paraSembol = z.teklif_para_birimi==='EUR'?'€':z.teklif_para_birimi==='USD'?'$':'₺';
+        var dCls = z.teklif_durumu==='kabul'?'badge-kabul':z.teklif_durumu==='red'?'badge-red':'badge-beklemede';
+        var dLbl = z.teklif_durumu==='kabul'?'✅ Kabul':z.teklif_durumu==='red'?'❌ Red':'⏳ Beklemede';
+        teklifHtml='<div style="background:#f5f3ff;border-radius:8px;padding:8px 10px;margin-top:6px;border:1px solid #ddd6fe;">'+
+          '<div class="gecmis-teklif">'+
+          '<div class="gecmis-teklif-bilgi">'+
+            '<span style="font-size:13px;font-weight:700;color:#6d28d9;">'+paraSembol+Number(z.teklif_tutari).toLocaleString('tr-TR')+'</span>'+
+            ' &nbsp;<span class="badge '+dCls+'" style="font-size:10px;">'+dLbl+'</span>'+
+          '</div>'+
+          '<button class="pdf-btn" onclick="teklifPdfIndir(\''+z.id+'\')">📄 PDF</button>'+
+          '</div>'+
+        '</div>';
       }
       // Su analiz kutusu
       var suHtml='';
@@ -1081,6 +1194,182 @@ function konumGoster(){
 
 // ——— DİĞER ———
 async function cikisYap() { if(!confirm('Çıkış yapmak istiyor musunuz?')) return; await sb.auth.signOut(); location.reload(); }
+
+// ——— TEKLİF DURUMU ———
+function teklifDurumSec(durum) {
+  document.getElementById('f-teklif-durumu').value = durum;
+  ['beklemede','kabul','red'].forEach(function(d){
+    var btn = document.getElementById('td-'+d);
+    if(!btn) return;
+    btn.className = 'teklif-durum-btn' + (d===durum ? ' aktif-'+d : '');
+  });
+}
+
+// ——— TEKLİF PDF ———
+var _gecmisData = [];
+function teklifPdfIndir(id) {
+  var z = _gecmisData.find(function(x){ return x.id===id; });
+  if(!z) return;
+  var { jsPDF } = window.jspdf;
+  var doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  var paraSembol = z.teklif_para_birimi==='EUR'?'€':z.teklif_para_birimi==='USD'?'$':'₺';
+  var bugün = new Date().toLocaleDateString('tr-TR');
+  var temsilci = (z.profiller && z.profiller.ad_soyad) ? z.profiller.ad_soyad : '';
+
+  // Üst bant
+  doc.setFillColor(90, 138, 26);
+  doc.rect(0, 0, 210, 28, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(18); doc.setFont('helvetica','bold');
+  doc.text('ALGA', 14, 12);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text('Araba Yıkama Sistemleri', 14, 18);
+  doc.setFontSize(10);
+  doc.text('TEKLİF FORMU', 196, 12, {align:'right'});
+  doc.text('Tarih: '+bugün, 196, 18, {align:'right'});
+
+  // İstasyon bilgisi kutusu
+  doc.setTextColor(30,30,30);
+  doc.setFillColor(245, 247, 240);
+  doc.rect(14, 34, 182, 22, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(11);
+  doc.text(z.istasyon_adi || '', 20, 43);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text((z.istasyon_marka||'')+(z.not_metni?' · '+z.not_metni:''), 20, 50);
+
+  // Teklif tutarı kutusu
+  doc.setFillColor(90, 138, 26);
+  doc.rect(14, 62, 182, 32, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  doc.text('TEKLİF TUTARI', 105, 72, {align:'center'});
+  doc.setFont('helvetica','bold'); doc.setFontSize(26);
+  doc.text(paraSembol + Number(z.teklif_tutari).toLocaleString('tr-TR'), 105, 87, {align:'center'});
+
+  // Teklif durumu
+  var durumLbl = z.teklif_durumu==='kabul'?'✓ KABUL EDİLDİ':z.teklif_durumu==='red'?'✗ REDDEDİLDİ':'⏳ BEKLEMEDE';
+  var durumRenk = z.teklif_durumu==='kabul'?[22,163,74]:z.teklif_durumu==='red'?[220,38,38]:[234,88,12];
+  doc.setTextColor(durumRenk[0],durumRenk[1],durumRenk[2]);
+  doc.setFont('helvetica','bold'); doc.setFontSize(12);
+  doc.text(durumLbl, 105, 108, {align:'center'});
+
+  // Bilgi satırları
+  doc.setTextColor(80,80,80); doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  var y = 122;
+  if(temsilci){ doc.text('Hazırlayan: '+temsilci, 14, y); y+=8; }
+  if(z.urun){ doc.text('Ürün/Sistem: '+z.urun, 14, y); y+=8; }
+
+  // Alt bant
+  doc.setFillColor(240,247,230);
+  doc.rect(0, 270, 210, 27, 'F');
+  doc.setTextColor(90,138,26); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+  doc.text('ALGA Araba Yıkama Sistemleri | alga-crm', 105, 279, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.setTextColor(120,120,120);
+  doc.text('Bu teklif '+bugün+' tarihinde düzenlenmiştir.', 105, 285, {align:'center'});
+
+  doc.save('Teklif_'+(z.istasyon_adi||'istasyon').replace(/\s+/g,'_')+'_'+bugün.replace(/\./g,'-')+'.pdf');
+}
+
+// ——— DASHBOARD ———
+var _chartAylik = null, _chartSonuc = null, _chartTeklifDurum = null;
+
+function dashboardAc() {
+  document.getElementById('dashboard-modal').classList.add('acik');
+  dashboardYukle();
+}
+function dashboardKapat() {
+  document.getElementById('dashboard-modal').classList.remove('acik');
+}
+
+async function dashboardYukle() {
+  var userId = mevcutKullanici ? (mevcutKullanici.id||mevcutKullanici.user_id) : null;
+  if(!userId) return;
+  // Rol kontrolü
+  var profResp = await fetch(SUPABASE_URL+'/rest/v1/profiller?select=rol&id=eq.'+userId,
+    {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+  var profData = await profResp.json();
+  var isAdmin = profData && profData[0] && profData[0].rol==='admin';
+
+  // Ziyaretleri çek
+  var url = SUPABASE_URL+'/rest/v1/ziyaretler?select=id,sonuc,teklif_tutari,teklif_durumu,created_at';
+  if(!isAdmin) url += '&satis_temsilcisi_id=eq.'+userId;
+  url += '&order=created_at.desc&limit=1000';
+
+  var resp = await fetch(url, {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+  var data = await resp.json();
+  if(!data || !data.length){
+    document.querySelector('.dash-govde').innerHTML='<div class="dash-bos">📭 Henüz hiç ziyaret kaydı yok.</div>';
+    return;
+  }
+
+  // ── Özet kartlar ──
+  var toplam = data.length;
+  var teklifSayisi = data.filter(function(z){ return z.teklif_tutari; }).length;
+  var anlasmaSayisi = data.filter(function(z){ return z.sonuc==='anlasma'; }).length;
+  var donusum = teklifSayisi>0 ? Math.round(anlasmaSayisi/teklifSayisi*100)+'%' : '—';
+  document.getElementById('d-toplam').textContent = toplam;
+  document.getElementById('d-teklif').textContent = teklifSayisi;
+  document.getElementById('d-anlasma').textContent = anlasmaSayisi;
+  document.getElementById('d-donusum').textContent = donusum;
+
+  // ── Son 6 ay bar chart ──
+  var ayEtiket=[], aySayi=[], now=new Date();
+  for(var i=5;i>=0;i--){
+    var d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    ayEtiket.push(d.toLocaleString('tr-TR',{month:'short',year:'2-digit'}));
+    var ay=d.getMonth(), yil=d.getFullYear();
+    aySayi.push(data.filter(function(z){
+      var dd=new Date(z.created_at); return dd.getMonth()===ay&&dd.getFullYear()===yil;
+    }).length);
+  }
+  if(_chartAylik) _chartAylik.destroy();
+  _chartAylik = new Chart(document.getElementById('chart-aylik'),{
+    type:'bar',
+    data:{ labels:ayEtiket, datasets:[{
+      label:'Ziyaret', data:aySayi,
+      backgroundColor:'#7ab528', borderRadius:6, borderSkipped:false
+    }]},
+    options:{ responsive:true, plugins:{legend:{display:false}},
+      scales:{ y:{beginAtZero:true, ticks:{stepSize:1, precision:0}} } }
+  });
+
+  // ── Sonuç dağılımı donut ──
+  var sonucMap={sicak:0,kararsiz:0,soguk:0,teklif:0,takipte:0,anlasma:0};
+  data.forEach(function(z){ if(sonucMap[z.sonuc]!==undefined) sonucMap[z.sonuc]++; });
+  var sonucLabels=['🔥 Sıcak','⚪ Kararsız','🔵 Soğuk','📋 Teklif','🔄 Takipte','✅ Anlaştı'];
+  var sonucValues=[sonucMap.sicak,sonucMap.kararsiz,sonucMap.soguk,sonucMap.teklif,sonucMap.takipte,sonucMap.anlasma];
+  var sonucRenkler=['#ef4444','#9ca3af','#3b82f6','#8b5cf6','#f97316','#0e9f6e'];
+  if(_chartSonuc) _chartSonuc.destroy();
+  _chartSonuc = new Chart(document.getElementById('chart-sonuc'),{
+    type:'doughnut',
+    data:{ labels:sonucLabels, datasets:[{
+      data:sonucValues, backgroundColor:sonucRenkler, borderWidth:2, borderColor:'white'
+    }]},
+    options:{ responsive:true, cutout:'58%',
+      plugins:{ legend:{ position:'bottom', labels:{font:{size:11},padding:10} } } }
+  });
+
+  // ── Teklif durumu bar (sadece teklif varsa) ──
+  var tekliflerle = data.filter(function(z){ return z.teklif_tutari; });
+  if(tekliflerle.length>0){
+    document.getElementById('dash-teklif-durumu-kart').style.display='block';
+    var dBekl=tekliflerle.filter(function(z){ return !z.teklif_durumu||z.teklif_durumu==='beklemede'; }).length;
+    var dKabul=tekliflerle.filter(function(z){ return z.teklif_durumu==='kabul'; }).length;
+    var dRed=tekliflerle.filter(function(z){ return z.teklif_durumu==='red'; }).length;
+    if(_chartTeklifDurum) _chartTeklifDurum.destroy();
+    _chartTeklifDurum = new Chart(document.getElementById('chart-teklif-durum'),{
+      type:'bar',
+      data:{ labels:['⏳ Beklemede','✅ Kabul','❌ Red'],
+        datasets:[{ data:[dBekl,dKabul,dRed],
+          backgroundColor:['#fdba74','#86efac','#fca5a5'],
+          borderColor:['#ea580c','#16a34a','#dc2626'],
+          borderWidth:1.5, borderRadius:6, borderSkipped:false }]},
+      options:{ responsive:true, plugins:{legend:{display:false}},
+        scales:{ y:{beginAtZero:true, ticks:{stepSize:1, precision:0}} } }
+    });
+  }
+}
+
 function toast(m) { var el=document.getElementById('toast'); el.textContent=m; el.classList.add('goster'); setTimeout(function(){el.classList.remove('goster');},2500); }
 
 sb.auth.onAuthStateChange(function(event,session){
