@@ -399,11 +399,11 @@
         <button class="sonuc-btn" data-deger="takipte" onclick="sonucSec(this,'takipte')">🔄 Takipte</button>
       </div>
 
-      <!-- TEKLİF ALANLARI -->
-      <div class="teklif-bolum" id="alan-teklif" style="display:none;">
-        <div class="teklif-bolum-baslik">📋 Teklif Detayları</div>
+      <!-- TEKLİF TUTARI — her zaman görünür -->
+      <div class="teklif-bolum" id="alan-teklif">
+        <div class="teklif-bolum-baslik">💰 Teklif Tutarı</div>
         <div class="f-grid">
-          <div class="f-grup"><label>Teklif Tutarı</label>
+          <div class="f-grup">
             <div style="display:flex;gap:6px;align-items:center;">
               <input type="number" id="f-teklif-tutar" placeholder="0" style="flex:1;"/>
               <select id="f-teklif-para" style="padding:8px 6px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:13px;font-family:inherit;background:white;cursor:pointer;">
@@ -415,7 +415,6 @@
           </div>
           <div class="f-grup"><label>Geçerlilik Tarihi</label><input type="date" id="f-teklif-tarih"/></div>
         </div>
-        <div class="f-grup"><label>Rakip Fiyat (₺)</label><input type="number" id="f-rakip-fiyat" placeholder="0"/></div>
       </div>
 
       <!-- KATALOG + FOTO -->
@@ -674,7 +673,6 @@ function sonucSec(btn, deger) {
   document.querySelectorAll('.sonuc-btn').forEach(function(b){b.className='sonuc-btn';});
   btn.classList.add('secili-'+deger);
   secilenSonuc = deger;
-  document.getElementById('alan-teklif').style.display = deger==='teklif'?'block':'none';
 }
 
 // ——— ÜRÜN CHECKBOX ———
@@ -710,7 +708,7 @@ function secilenUrunleriAl() {
 // ——— OTOMATIK KAYIT (localStorage taslak) ———
 var _otosaveTimer = null;
 var FORM_ALANLARI = ['f-yetkili','f-unvan','f-arac-sayisi','f-fiyat-oto','f-fiyat-self','f-not','f-takip','f-rakip',
-  'f-teklif-tutar','f-teklif-tarih','f-rakip-fiyat','f-su-sertlik','f-su-ph','f-su-ppm','f-su-ec'];
+  'f-teklif-tutar','f-teklif-tarih','f-su-sertlik','f-su-ph','f-su-ppm','f-su-ec'];
 
 function otosaveBaslat(){
   FORM_ALANLARI.forEach(function(id){
@@ -760,7 +758,7 @@ function otosaveSil(){ try { localStorage.removeItem('alga_crm_draft'); } catch(
 function formTemizle() {
   otosaveSil();
   ['f-yetkili','f-unvan','f-arac-sayisi','f-fiyat-oto','f-fiyat-self','f-not','f-takip','f-rakip',
-   'f-teklif-tutar','f-teklif-tarih','f-rakip-fiyat','f-teklif-para',
+   'f-teklif-tutar','f-teklif-tarih','f-teklif-para',
    'f-su-sertlik','f-su-ph','f-su-ppm','f-su-ec'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
@@ -770,7 +768,7 @@ function formTemizle() {
   });
   document.getElementById('f-katalog').checked=false;
   document.querySelectorAll('.sonuc-btn').forEach(function(b){b.className='sonuc-btn';});
-  ['alan-tunel','alan-jetwash','alan-su','alan-teklif'].forEach(function(id){
+  ['alan-tunel','alan-jetwash','alan-su'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   secilenSonuc=null; secilenFotoFile=null;
@@ -885,7 +883,6 @@ function fotoLightboxKapat(){ document.getElementById('foto-lightbox').classList
 // ——— KAYDET ———
 async function ziyaretKaydet() {
   if(!secilenIstasyon){ toast('İstasyon seçilmedi'); return; }
-  if(!secilenSonuc){ toast('Ziyaret sonucu seçin'); return; }
   var userId=mevcutKullanici?(mevcutKullanici.id||mevcutKullanici.user_id):null;
   if(!userId){ toast('Oturum bulunamadı, sayfayı yenileyin'); return; }
   var btn=document.getElementById('kaydet-btn');
@@ -920,7 +917,7 @@ async function ziyaretKaydet() {
       fiyat_otomatik:parseFloat(document.getElementById('f-fiyat-oto').value)||null,
       fiyat_selfservis:parseFloat(document.getElementById('f-fiyat-self').value)||null,
       katalog_birakildi:document.getElementById('f-katalog').checked,
-      sonuc:secilenSonuc,
+      sonuc:secilenSonuc||'kararsiz',
       not_metni:document.getElementById('f-not').value,
       takip_tarihi:document.getElementById('f-takip').value||null,
       foto_url:fotoUrl,
@@ -928,7 +925,6 @@ async function ziyaretKaydet() {
       teklif_tutari:parseFloat(document.getElementById('f-teklif-tutar').value)||null,
       teklif_para_birimi:document.getElementById('f-teklif-para').value||'TL',
       teklif_tarihi:document.getElementById('f-teklif-tarih').value||null,
-      rakip_fiyat:parseFloat(document.getElementById('f-rakip-fiyat').value)||null,
       su_sertlik:parseFloat(document.getElementById('f-su-sertlik').value)||null,
       su_ph:parseFloat(document.getElementById('f-su-ph').value)||null,
       su_ppm:parseFloat(document.getElementById('f-su-ppm').value)||null,
@@ -987,7 +983,6 @@ async function gecmisYukle() {
         var paraSembol = z.teklif_para_birimi==='EUR' ? '€' : z.teklif_para_birimi==='USD' ? '$' : '₺';
         teklifHtml='<div class="gecmis-teklif">💰 Teklif: <strong>'+paraSembol+z.teklif_tutari.toLocaleString('tr-TR')+'</strong>';
         if(z.teklif_tarihi) teklifHtml+=' &nbsp;📅 Geçerli: '+z.teklif_tarihi;
-        if(z.rakip_fiyat) teklifHtml+='<br>🏷 Rakip fiyat: ₺'+z.rakip_fiyat;
         teklifHtml+='</div>';
       }
       // Su analiz kutusu
