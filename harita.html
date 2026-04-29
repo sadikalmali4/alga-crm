@@ -214,6 +214,12 @@
   .kaydet-btn:disabled{background:var(--gray-400);}
 
   /* HARİTA GÖRÜNTÜLEYICI MODU */
+  /* TEKNİK SERVİS MODU — harita + geçmiş + konum ekle, form yok */
+  body.teknik-servis-modu .dashboard-btn-gizle{display:none!important;}
+  body.teknik-servis-modu #admin-link{display:none!important;}
+  body.teknik-servis-modu .panel-tabs .panel-tab:first-child{display:none!important;}
+  body.teknik-servis-modu #tab-form{display:none!important;}
+
   body.harita-modu #nokta-ekle-btn{display:none!important;}
   body.harita-modu .dashboard-btn-gizle{display:none!important;}
   body.harita-modu #admin-link{display:none!important;}
@@ -656,10 +662,12 @@ async function uygulamaBaslat(user) {
         if(p.bayiler) { mevcutKullanici.bayi_adi = p.bayiler.ad; mevcutKullanici.bayi_id = p.bayiler.id; }
         var btn = document.getElementById('profil-btn');
         if(btn && p.ad_soyad) btn.textContent = p.ad_soyad.charAt(0).toUpperCase();
-        // Harita görüntüleyici rolü
+        // Rol bazlı kısıtlamalar
         if(p.rol === 'harita') {
           _haritaRolu = true;
           document.body.classList.add('harita-modu');
+        } else if(p.rol === 'teknik_servis') {
+          document.body.classList.add('teknik-servis-modu');
         } else {
           var al = document.getElementById('admin-link');
           if(al && (p.rol==='admin')) al.style.display = 'flex';
@@ -815,8 +823,11 @@ function istasyonSec(ist) {
   var rotaPanel = document.getElementById('rota-panel');
   if(rotaPanel) rotaPanel.style.display = (ist.lat&&ist.lng) ? 'block' : 'none';
   if(_haritaRolu) {
-    // Sadece harita modu — form/geçmiş yok
     panelAc();
+    return;
+  }
+  if(document.body.classList.contains('teknik-servis-modu')) {
+    panelAc(); tabDegistir('gecmis'); gecmisYukle();
     return;
   }
   panelAc(); formTemizle(); gecmisYukle();
@@ -965,13 +976,26 @@ function aramaYap(kelime) {
   if(!sonuclar.length){ kutu.style.display='none'; return; }
   kutu.innerHTML=sonuclar.map(function(s){
     var konum=[s.ilce,s.il].filter(Boolean).join(' / ');
-    return '<div class="arama-sonuc-item" onclick="aramaSecim('+s.id+')">'+
-      '<div class="arama-sonuc-ad">'+s.adi+'</div>'+
-      '<div class="arama-sonuc-adres">'+(s.marka?'<b>'+s.marka+'</b> · ':'')+
-      (konum?'<span style="color:#7ab528;font-weight:600;">'+konum+'</span>':s.adres||'')+
+    var ozelBadge = s.ozel ? '<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:4px;">📍 Özel</span>' : '';
+    var idStr = String(s.id);
+    var onclick = s.ozel
+      ? 'aramaSecimOzel(\''+idStr+'\')'
+      : 'aramaSecim('+idStr+')';
+    return '<div class="arama-sonuc-item" onclick="'+onclick+'">'+
+      '<div class="arama-sonuc-ad">'+s.adi+ozelBadge+'</div>'+
+      '<div class="arama-sonuc-adres">'+(s.marka&&!s.ozel?'<b>'+s.marka+'</b> · ':'')+
+      (konum?'<span style="color:#7ab528;font-weight:600;">'+konum+'</span>':(s.adres||''))+
       '</div></div>';
   }).join('');
   kutu.style.display='block';
+}
+function aramaSecimOzel(id) {
+  var s = istasyonlar.find(function(x){ return String(x.id)===String(id); });
+  if(!s) return;
+  document.getElementById('arama-input').value=s.adi;
+  document.getElementById('arama-sonuclar').style.display='none';
+  if(s.lat&&s.lng) map.setView([s.lat,s.lng],16);
+  setTimeout(function(){ istasyonSec(s); },300);
 }
 function aramaSecim(id) {
   var s=istasyonlar.find(function(x){return x.id===id;}); if(!s) return;
@@ -1357,14 +1381,17 @@ function noktaIsimKaydet() {
     adi: isim,
     marka: 'Özel Konum',
     adres: 'Haritadan seçildi',
+    ozel: true,
     lat: _noktaLat,
     lng: _noktaLng,
     ilce: '', il: '',
     ozel: true
   };
+  // Aramada çıksın diye listeye ekle
+  istasyonlar.push(ozelIst);
   // Marker güncelle — tıklanabilir yap
   if(_noktaMarkerTemp){
-    _noktaMarkerTemp.bindPopup('<b>'+isim+'</b><br>Özel konum').openPopup();
+    _noktaMarkerTemp.bindPopup('<b>'+isim+'</b><br>📍 Özel konum').openPopup();
     (function(ist){ _noktaMarkerTemp.on('click', function(){ istasyonSec(ist); }); })(ozelIst);
   }
   // Paneli aç
