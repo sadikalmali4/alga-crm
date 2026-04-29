@@ -213,6 +213,26 @@
   .kaydet-btn:hover{background:var(--blue-dark);}
   .kaydet-btn:disabled{background:var(--gray-400);}
 
+  /* HARİTA GÖRÜNTÜLEYICI MODU */
+  body.harita-modu #nokta-ekle-btn{display:none!important;}
+  body.harita-modu .dashboard-btn-gizle{display:none!important;}
+  body.harita-modu #admin-link{display:none!important;}
+  body.harita-modu .panel-tabs{display:none!important;}
+  body.harita-modu #tab-form{display:none!important;}
+  body.harita-modu #tab-gecmis{display:none!important;}
+  body.harita-modu .panel-govde{padding-bottom:16px;}
+  .rota-panel{padding:12px 0 4px;}
+  .rota-btn{display:flex;align-items:center;gap:10px;width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid var(--gray-200);background:white;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;margin-bottom:8px;transition:all .15s;color:#374151;text-decoration:none;}
+  .rota-btn:hover{border-color:var(--blue);background:var(--blue-light);}
+  .rota-btn-google{border-color:#dbeafe;color:#1d4ed8;background:#eff6ff;}
+  .rota-btn-google:hover{background:#dbeafe;}
+  .rota-btn-yandex{border-color:#fce7f3;color:#be185d;background:#fdf2f8;}
+  .rota-btn-yandex:hover{background:#fce7f3;}
+  .rota-btn-wp{border-color:#dcfce7;color:#15803d;background:#f0fdf4;}
+  .rota-btn-wp:hover{background:#dcfce7;}
+  .rota-btn-kopyala{border-color:#f3e8ff;color:#7c3aed;background:#faf5ff;}
+  .rota-btn-kopyala:hover{background:#f3e8ff;}
+
   /* GEÇMİŞ */
   .gecmis-kart{border:1px solid var(--gray-200);border-radius:10px;padding:12px;margin-bottom:10px;}
   .gecmis-ust{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
@@ -305,7 +325,7 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>
     </button>
     <button class="admin-btn" id="nokta-ekle-btn" onclick="noktaEkleModu()" title="Haritaya nokta ekle" style="font-size:17px;">📍</button>
-    <button class="admin-btn" onclick="dashboardAc()" title="İstatistikler" style="font-size:17px;">📈</button>
+    <button class="admin-btn dashboard-btn-gizle" onclick="dashboardAc()" title="İstatistikler" style="font-size:17px;">📈</button>
     <a class="admin-btn" id="admin-link" href="/alga-crm/admin.html" title="Admin Paneli" style="display:none;">⚙️</a>
     <button class="profil-btn" id="profil-btn" onclick="cikisYap()">?</button>
   </div>
@@ -345,6 +365,21 @@
     <div class="panel-tabs">
       <button class="panel-tab aktif" onclick="tabDegistir('form')">Yeni Ziyaret</button>
       <button class="panel-tab" onclick="tabDegistir('gecmis')">Geçmiş</button>
+    </div>
+    <!-- ROTA PANELI — harita modunda her zaman, normal modda panel altında -->
+    <div class="rota-panel" id="rota-panel" style="display:none;">
+      <button class="rota-btn rota-btn-google" onclick="rotaAc('google')">
+        <span style="font-size:18px;">🗺️</span> Google Maps'te Rota Al
+      </button>
+      <button class="rota-btn rota-btn-yandex" onclick="rotaAc('yandex')">
+        <span style="font-size:18px;">🗺️</span> Yandex Maps'te Rota Al
+      </button>
+      <button class="rota-btn rota-btn-wp" onclick="rotaAc('whatsapp')">
+        <span style="font-size:18px;">📤</span> WhatsApp'ta Paylaş
+      </button>
+      <button class="rota-btn rota-btn-kopyala" onclick="rotaAc('kopyala')">
+        <span style="font-size:18px;">📋</span> Konumu Kopyala
+      </button>
     </div>
   </div>
   <div class="panel-govde">
@@ -584,6 +619,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 var istasyonlar = [], ISTASYON_DATA = [], ziyaretRenkMap = {};
 var secilenIstasyon = null, secilenSonuc = null, mevcutKullanici = null;
 var map = null, secilenFotoFile = null, markerLayerMap = {};
+var _haritaRolu = false; // Sadece harita görüntüleyici
 
 const SONUC_RENK = {
   sicak:'#ef4444', kararsiz:'#6b7280', soguk:'#3b82f6',
@@ -620,9 +656,14 @@ async function uygulamaBaslat(user) {
         if(p.bayiler) { mevcutKullanici.bayi_adi = p.bayiler.ad; mevcutKullanici.bayi_id = p.bayiler.id; }
         var btn = document.getElementById('profil-btn');
         if(btn && p.ad_soyad) btn.textContent = p.ad_soyad.charAt(0).toUpperCase();
-        // Herkes rapor panelini görebilir (admin-link herkese açık)
-        var al = document.getElementById('admin-link');
-        if(al) al.style.display = 'flex';
+        // Harita görüntüleyici rolü
+        if(p.rol === 'harita') {
+          _haritaRolu = true;
+          document.body.classList.add('harita-modu');
+        } else {
+          var al = document.getElementById('admin-link');
+          if(al && (p.rol==='admin')) al.style.display = 'flex';
+        }
       } else {
         // Profili olmayan kullanıcı (ilk admin) — admin say, linki göster
         if(ADMIN_EMAILS.includes((user.email||'').toLowerCase())){
@@ -766,9 +807,19 @@ function markerRenkGuncelle(istAdi, sonuc) {
 function istasyonSec(ist) {
   secilenIstasyon = ist;
   document.getElementById('panel-istasyon-adi').textContent = ist.adi;
-  document.getElementById('panel-istasyon-alt').textContent = (ist.marka?ist.marka+' · ':'')+( ist.adres||'');
+  var altBilgi = (ist.marka?ist.marka+' · ':'')+(ist.adres||'');
+  var konum = [ist.ilce,ist.il].filter(Boolean).join(' / ');
+  if(konum) altBilgi += (altBilgi?' · ':'')+konum;
+  document.getElementById('panel-istasyon-alt').textContent = altBilgi;
+  // Rota panelini göster (koordinat varsa)
+  var rotaPanel = document.getElementById('rota-panel');
+  if(rotaPanel) rotaPanel.style.display = (ist.lat&&ist.lng) ? 'block' : 'none';
+  if(_haritaRolu) {
+    // Sadece harita modu — form/geçmiş yok
+    panelAc();
+    return;
+  }
   panelAc(); formTemizle(); gecmisYukle();
-  // Taslak varsa geri yükle
   setTimeout(otosaveGeriYukle, 200);
 }
 function panelAc() { document.getElementById('crm-panel').classList.add('acik'); document.body.classList.add('panel-acik'); if(map) setTimeout(function(){map.invalidateSize();},320); }
@@ -1225,6 +1276,29 @@ function konumGoster(){
 
 // ——— DİĞER ———
 async function cikisYap() { if(!confirm('Çıkış yapmak istiyor musunuz?')) return; await sb.auth.signOut(); location.reload(); }
+
+// ——— ROTA / NAVİGASYON ———
+function rotaAc(tip) {
+  if(!secilenIstasyon||!secilenIstasyon.lat||!secilenIstasyon.lng){ toast('Bu istasyonun koordinatı yok'); return; }
+  var lat = secilenIstasyon.lat, lng = secilenIstasyon.lng;
+  var ad  = encodeURIComponent(secilenIstasyon.adi);
+  if(tip==='google'){
+    window.open('https://www.google.com/maps/dir/?api=1&destination='+lat+','+lng+'&travelmode=driving','_blank');
+  } else if(tip==='yandex'){
+    window.open('https://yandex.com.tr/maps/?rtext=~'+lat+','+lng+'&rtt=auto','_blank');
+  } else if(tip==='whatsapp'){
+    var mesaj = '📍 '+secilenIstasyon.adi+'\n'+(secilenIstasyon.marka?secilenIstasyon.marka+'\n':'')+
+      'Google Maps: https://www.google.com/maps?q='+lat+','+lng;
+    window.open('https://wa.me/?text='+encodeURIComponent(mesaj),'_blank');
+  } else if(tip==='kopyala'){
+    var link = 'https://www.google.com/maps?q='+lat+','+lng;
+    navigator.clipboard.writeText(link).then(function(){
+      toast('✅ Konum linki kopyalandı!');
+    }).catch(function(){
+      toast('Link: '+link);
+    });
+  }
+}
 
 // ——— MANUEL NOKTA EKLEME ———
 var _noktaEkleModu = false, _noktaLat = null, _noktaLng = null, _noktaMarkerTemp = null;
