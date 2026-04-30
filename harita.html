@@ -693,7 +693,12 @@ async function uygulamaBaslat(user) {
           document.body.classList.add('teknik-servis-modu');
         } else {
           var al = document.getElementById('admin-link');
-          if(al && (p.rol==='admin')) al.style.display = 'flex';
+          // Admin → Admin Paneli, yöneticiler → Rapor Paneli (tüm raporlar salt-okunur)
+          var yoneticiRoller = ['admin','satis_muduru','genel_mudur','yk_baskani'];
+          if(al && yoneticiRoller.indexOf(p.rol) >= 0) {
+            al.style.display = 'flex';
+            al.title = p.rol === 'admin' ? 'Admin Paneli' : 'Rapor Paneli';
+          }
         }
       } else {
         // Profili olmayan kullanıcı (ilk admin) — admin say, linki göster
