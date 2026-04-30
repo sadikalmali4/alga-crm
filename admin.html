@@ -157,6 +157,14 @@
     <button class="btn btn-outline" onclick="filtreleriSifirla()">Tümü</button>
   </div>
 
+  <!-- AYLIK RAPOR -->
+  <div style="margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <button id="rapor-gonder-btn" class="btn btn-green" onclick="aylikRaporGonder()" style="display:flex;align-items:center;gap:7px;font-size:14px;padding:10px 20px;">
+      📧 Aylık Rapor Gönder
+    </button>
+    <span id="rapor-gonder-mesaj" style="font-size:13px;color:#6b7280;"></span>
+  </div>
+
   <!-- STAT KARTLAR -->
   <div class="stat-grid" id="stat-grid">
     <div class="stat-kart" id="sk-toplam" onclick="statFiltrele(null)" title="Tüm ziyaretler"><div class="stat-sayi" id="s-toplam" style="color:var(--green-dark)">—</div><div class="stat-etiket">Toplam Ziyaret</div></div>
@@ -325,12 +333,14 @@ var _mevcutRol = null;
 var _mevcutAd = '';
 
 var ROL_ETIKET = {
-  admin:        '🔑 Admin',
-  yk_baskani:   '👑 Yönetim Kurulu Başkanı',
-  genel_mudur:  '🏢 Genel Müdür',
-  satis_muduru: '📊 Satış Müdürü',
-  satici:       '🚗 Satıcı',
-  yonetim:      '👔 Yönetim'  // geriye dönük uyumluluk
+  admin:          '🔑 Admin',
+  yk_baskani:     '👑 Yönetim Kurulu Başkanı',
+  genel_mudur:    '🏢 Genel Müdür',
+  satis_muduru:   '📊 Satış Müdürü',
+  satici:         '🚗 Satıcı',
+  teknik_servis:  '🔧 Teknik Servis',
+  harita:         '🗺️ Harita Görüntüleyici',
+  yonetim:        '👔 Yönetim'  // geriye dönük uyumluluk
 };
 
 // Tüm fetch'lerde kullanılacak header yardımcısı
@@ -766,6 +776,41 @@ function csvIndir(){
 }
 
 async function cikisYap(){ await sb.auth.signOut(); window.location.href='/alga-crm/harita.html'; }
+
+// ═══ AYLIK RAPOR ═══
+async function aylikRaporGonder(){
+  var btn = document.getElementById('rapor-gonder-btn');
+  var msg = document.getElementById('rapor-gonder-mesaj');
+  if(!confirm('Geçen aya ait performans raporu 4 yöneticiye gönderilsin mi?')) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Gönderiliyor...';
+  msg.style.color = '#6b7280';
+  msg.textContent = 'Edge Function çağrılıyor...';
+  try {
+    var r = await fetch(SUPABASE_URL+'/functions/v1/aylik-rapor', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer '+(_authToken||SUPABASE_KEY),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ otomatik: true })
+    });
+    var d = await r.json();
+    if(r.ok && d.ok){
+      msg.style.color = '#16a34a';
+      msg.textContent = '✅ Rapor başarıyla gönderildi! (' + (d.gonderen||'?') + ' kişi, ' + (d.ziyaret_sayisi||0) + ' ziyaret)';
+    } else {
+      msg.style.color = '#dc2626';
+      msg.textContent = '❌ Hata: ' + (d.error || d.errors?.join(', ') || JSON.stringify(d));
+    }
+  } catch(e){
+    msg.style.color = '#dc2626';
+    msg.textContent = '❌ Bağlantı hatası: ' + e.message;
+  }
+  btn.disabled = false;
+  btn.textContent = '📧 Aylık Rapor Gönder';
+}
 
 // ═══ BAYİLER YÖNETİMİ ═══
 var tumBayiler = [];
