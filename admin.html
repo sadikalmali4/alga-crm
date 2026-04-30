@@ -990,32 +990,39 @@ async function yeniSaticiEkle(){
     });
     var adminD = await adminR.json();
 
-    // Zaten kayıtlı → profili güncelle + şifre sıfırlama gönder
+    // Admin API başarısız → mevcut kullanıcıyı email ile ara (her hata durumunda)
     if(!adminR.ok){
-      var errMsg = adminD.msg || adminD.message || adminD.error_description || JSON.stringify(adminD);
-      if(adminR.status === 422 || errMsg.toLowerCase().includes('already') || errMsg.toLowerCase().includes('registered')){
-        msg.textContent='Kullanıcı zaten var, profil güncelleniyor...';
-        // Kullanıcının mevcut ID'sini admin API'den bul
-        var listR = await fetch(SUPABASE_URL+'/auth/v1/admin/users?email='+encodeURIComponent(email), {
+      msg.textContent='Kullanıcı kontrol ediliyor...';
+      var existingId = null;
+      try {
+        // Tüm kullanıcıları çek, email ile filtrele
+        var listR = await fetch(SUPABASE_URL+'/auth/v1/admin/users?page=1&per_page=1000', {
           headers: { 'apikey': SUPABASE_SERVICE_KEY, 'Authorization': 'Bearer '+SUPABASE_SERVICE_KEY }
         });
         var listD = await listR.json();
-        var existingId = listD.users && listD.users[0] ? listD.users[0].id : null;
-        if(existingId){
-          await fetch(SUPABASE_URL+'/rest/v1/profiller', {
-            method: 'POST',
-            headers: hdrs({'Content-Type':'application/json','Prefer':'return=minimal,resolution=merge-duplicates'}),
-            body: JSON.stringify({id: existingId, ad_soyad: ad, rol: rol, email: email})
-          });
+        if(listD.users){
+          var found = listD.users.find(function(u){ return u.email && u.email.toLowerCase()===email.toLowerCase(); });
+          if(found) existingId = found.id;
         }
-        msg.textContent='Davet e-postası gönderiliyor...';
+      } catch(e){}
+
+      if(existingId){
+        // Kullanıcı bulundu → profili güncelle + şifre sıfırla
+        await fetch(SUPABASE_URL+'/rest/v1/profiller', {
+          method: 'POST',
+          headers: hdrs({'Content-Type':'application/json','Prefer':'return=minimal,resolution=merge-duplicates'}),
+          body: JSON.stringify({id: existingId, ad_soyad: ad, rol: rol, email: email})
+        });
+        msg.textContent='Şifre belirleme e-postası gönderiliyor...';
         await sb.auth.resetPasswordForEmail(email, { redirectTo: 'https://sadikalmali4.github.io/alga-crm/harita.html' });
         msg.style.color='#f59e0b';
-        msg.innerHTML='⚠️ <strong>'+email+'</strong> zaten sistemde kayıtlıydı.<br>'+
-          '<small style="color:#6b7280">📧 Şifre belirleme e-postası gönderildi, profil güncellendi.</small>';
+        msg.innerHTML='⚠️ <strong>'+email+'</strong> sistemde zaten vardı.<br>'+
+          '<small style="color:#6b7280">📧 Şifre belirleme bağlantısı gönderildi, profil güncellendi.</small>';
         await saticiYonetimYukle();
         return;
       }
+      // Gerçekten hata
+      var errMsg = adminD.msg || adminD.message || adminD.error_description || JSON.stringify(adminD);
       msg.style.color='#e02424';
       msg.textContent='Hata: '+errMsg;
       return;
