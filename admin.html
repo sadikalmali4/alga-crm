@@ -124,7 +124,7 @@
       <label>Bitiş</label>
       <input type="date" id="f-bit" onchange="raporYukle()"/>
     </div>
-    <div class="f-grup">
+    <div class="f-grup" id="satici-filtre-satir">
       <label>Satıcı</label>
       <select id="f-satici" onchange="raporYukle()">
         <option value="">Tüm Satıcılar</option>
@@ -332,6 +332,7 @@ var chartSatici = null, chartSonuc = null;
 var _authToken = null;
 var _mevcutRol = null;
 var _mevcutAd = '';
+var _mevcutKullaniciId = null;
 
 var ROL_ETIKET = {
   admin:          '🔑 Admin',
@@ -372,6 +373,7 @@ sb.auth.getSession().then(async function(res){
   if(!res.data||!res.data.session){ window.location.href='/alga-crm/harita.html'; return; }
   _authToken = res.data.session.access_token;
   var uid = res.data.session.user.id;
+  _mevcutKullaniciId = uid;
 
   // Kullanıcı rolünü çek
   try {
@@ -455,10 +457,16 @@ async function saticiListesiYukle(){
 async function raporYukle(){
   var ov = document.getElementById('yukleniyor-overlay');
   ov.classList.add('aktif');
+
+  // Satıcı rolü: sadece kendi ziyaretlerini görebilir, satıcı filtresi de gizlenir
+  var _saticiRol = (_mevcutRol === 'satici' || _mevcutRol === 'teknik_servis');
+  var saticiFiltreSatir = document.getElementById('satici-filtre-satir');
+  if(saticiFiltreSatir) saticiFiltreSatir.style.display = _saticiRol ? 'none' : '';
+
   try {
     var bas = document.getElementById('f-bas').value;
     var bit = document.getElementById('f-bit').value;
-    var satici = document.getElementById('f-satici').value;
+    var satici = _saticiRol ? _mevcutKullaniciId : document.getElementById('f-satici').value;
     var sonuc = document.getElementById('f-sonuc').value;
 
     var BASE = SUPABASE_URL+'/rest/v1';

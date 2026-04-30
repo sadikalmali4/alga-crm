@@ -227,17 +227,21 @@
   body.harita-modu #tab-form{display:none!important;}
   body.harita-modu #tab-gecmis{display:none!important;}
   body.harita-modu .panel-govde{padding-bottom:16px;}
-  .rota-panel{padding:12px 0 4px;}
-  .rota-btn{display:flex;align-items:center;gap:10px;width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid var(--gray-200);background:white;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;margin-bottom:8px;transition:all .15s;color:#374151;text-decoration:none;}
-  .rota-btn:hover{border-color:var(--blue);background:var(--blue-light);}
-  .rota-btn-google{border-color:#dbeafe;color:#1d4ed8;background:#eff6ff;}
-  .rota-btn-google:hover{background:#dbeafe;}
-  .rota-btn-yandex{border-color:#fce7f3;color:#be185d;background:#fdf2f8;}
-  .rota-btn-yandex:hover{background:#fce7f3;}
-  .rota-btn-wp{border-color:#dcfce7;color:#15803d;background:#f0fdf4;}
-  .rota-btn-wp:hover{background:#dcfce7;}
-  .rota-btn-kopyala{border-color:#f3e8ff;color:#7c3aed;background:#faf5ff;}
-  .rota-btn-kopyala:hover{background:#f3e8ff;}
+  /* NAVİGASYON BUTONU */
+  .rota-panel{padding:10px 0 2px;}
+  .nav-tek-btn{display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid #7ab528;background:#f0f7e6;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;color:#3a6010;transition:all .15s;}
+  .nav-tek-btn:hover{background:#e0f0cc;border-color:#5a8a1a;}
+  .nav-sheet-overlay{display:none;position:fixed;inset:0;z-index:19000;background:rgba(0,0,0,.45);}
+  .nav-sheet-overlay.acik{display:block;}
+  .nav-sheet{position:fixed;bottom:0;left:0;right:0;z-index:19001;background:white;border-radius:20px 20px 0 0;padding:16px 16px 32px;box-shadow:0 -4px 24px rgba(0,0,0,.18);}
+  .nav-sheet-baslik{font-size:13px;font-weight:700;color:#6b7280;text-align:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #f3f4f6;}
+  .nav-sheet-btn{display:flex;align-items:center;gap:12px;width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid var(--gray-200);background:white;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;margin-bottom:8px;transition:all .15s;color:#374151;}
+  .nav-sheet-btn:hover,.nav-sheet-btn:active{background:#f9fafb;}
+  .nav-sheet-btn .nav-icon{font-size:22px;width:32px;text-align:center;}
+  .nav-sheet-btn.google{border-color:#dbeafe;color:#1d4ed8;}
+  .nav-sheet-btn.yandex{border-color:#fce7f3;color:#be185d;}
+  .nav-sheet-btn.wp{border-color:#dcfce7;color:#15803d;}
+  .nav-sheet-btn.kopyala{border-color:#f3e8ff;color:#7c3aed;}
 
   /* GEÇMİŞ */
   .gecmis-kart{border:1px solid var(--gray-200);border-radius:10px;padding:12px;margin-bottom:10px;}
@@ -372,19 +376,11 @@
       <button class="panel-tab aktif" onclick="tabDegistir('form')">Yeni Ziyaret</button>
       <button class="panel-tab" onclick="tabDegistir('gecmis')">Geçmiş</button>
     </div>
-    <!-- ROTA PANELI — harita modunda her zaman, normal modda panel altında -->
+    <!-- NAVİGASYON BUTONU — tek buton, tıkla seç -->
     <div class="rota-panel" id="rota-panel" style="display:none;">
-      <button class="rota-btn rota-btn-google" onclick="rotaAc('google')">
-        <span style="font-size:18px;">🗺️</span> Google Maps'te Rota Al
-      </button>
-      <button class="rota-btn rota-btn-yandex" onclick="rotaAc('yandex')">
-        <span style="font-size:18px;">🗺️</span> Yandex Maps'te Rota Al
-      </button>
-      <button class="rota-btn rota-btn-wp" onclick="rotaAc('whatsapp')">
-        <span style="font-size:18px;">📤</span> WhatsApp'ta Paylaş
-      </button>
-      <button class="rota-btn rota-btn-kopyala" onclick="rotaAc('kopyala')">
-        <span style="font-size:18px;">📋</span> Konumu Kopyala
+      <button class="nav-tek-btn" onclick="navSheetAc()">
+        <span style="font-size:18px;">🧭</span> Navigasyon &amp; Konum
+        <span style="margin-left:auto;font-size:16px;opacity:.6;">›</span>
       </button>
     </div>
   </div>
@@ -395,6 +391,10 @@
       <div class="f-grid">
         <div class="f-grup"><label>Yetkili adı</label><input type="text" id="f-yetkili" placeholder="Ad Soyad"/></div>
         <div class="f-grup"><label>Unvan</label><input type="text" id="f-unvan" placeholder="Müdür..."/></div>
+      </div>
+      <div class="f-grid">
+        <div class="f-grup"><label>📧 E-posta</label><input type="email" id="f-yetkili-email" placeholder="ornek@firma.com"/></div>
+        <div class="f-grup"><label>📞 Telefon</label><input type="tel" id="f-yetkili-tel" placeholder="0532 000 00 00"/></div>
       </div>
       <div class="f-grid">
         <div class="f-grup"><label>🚗 Araç Sayısı</label><input type="number" id="f-arac-sayisi" placeholder="0" min="0"/></div>
@@ -609,6 +609,28 @@
 <div id="foto-lightbox" onclick="fotoLightboxKapat()">
   <button id="foto-lightbox-kapat" onclick="fotoLightboxKapat()">✕</button>
   <img id="foto-lightbox-img" src="" alt=""/>
+</div>
+
+<!-- NAVİGASYON ACTION SHEET -->
+<div class="nav-sheet-overlay" id="nav-sheet-overlay" onclick="navSheetKapat()"></div>
+<div class="nav-sheet" id="nav-sheet" style="display:none;">
+  <div class="nav-sheet-baslik">🧭 Navigasyon &amp; Konum</div>
+  <button class="nav-sheet-btn google" onclick="rotaAc('google');navSheetKapat();">
+    <span class="nav-icon">🗺️</span>
+    <span><strong>Google Maps</strong><br><small style="font-weight:400;color:#6b7280;">Rota al &amp; yol tarifi</small></span>
+  </button>
+  <button class="nav-sheet-btn yandex" onclick="rotaAc('yandex');navSheetKapat();">
+    <span class="nav-icon">🗺️</span>
+    <span><strong>Yandex Maps</strong><br><small style="font-weight:400;color:#6b7280;">Yandex navigasyon</small></span>
+  </button>
+  <button class="nav-sheet-btn wp" onclick="rotaAc('whatsapp');navSheetKapat();">
+    <span class="nav-icon">📤</span>
+    <span><strong>WhatsApp'ta Paylaş</strong><br><small style="font-weight:400;color:#6b7280;">Konum linkini gönder</small></span>
+  </button>
+  <button class="nav-sheet-btn kopyala" onclick="rotaAc('kopyala');navSheetKapat();">
+    <span class="nav-icon">📋</span>
+    <span><strong>Konumu Kopyala</strong><br><small style="font-weight:400;color:#6b7280;">Koordinatları panoya kopyala</small></span>
+  </button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
@@ -827,7 +849,10 @@ function istasyonSec(ist) {
     return;
   }
   if(document.body.classList.contains('teknik-servis-modu')) {
-    panelAc(); tabDegistir('gecmis'); gecmisYukle();
+    panelAc();
+    // Rota panelini tekrar zorla göster (koordinat varsa)
+    if(rotaPanel && ist.lat && ist.lng) rotaPanel.style.display = 'block';
+    tabDegistir('gecmis');
     return;
   }
   panelAc(); formTemizle(); gecmisYukle();
@@ -888,7 +913,7 @@ function secilenUrunleriAl() {
 
 // ——— OTOMATIK KAYIT (localStorage taslak) ———
 var _otosaveTimer = null;
-var FORM_ALANLARI = ['f-yetkili','f-unvan','f-arac-sayisi','f-fiyat-oto','f-fiyat-self','f-not','f-rakip',
+var FORM_ALANLARI = ['f-yetkili','f-unvan','f-yetkili-email','f-yetkili-tel','f-arac-sayisi','f-fiyat-oto','f-fiyat-self','f-not','f-rakip',
   'f-teklif-tutar','f-teklif-tarih','f-teklif-para','f-su-sertlik','f-su-ph','f-su-ppm','f-su-ec'];
 
 function otosaveBaslat(){
@@ -938,7 +963,7 @@ function otosaveSil(){ try { localStorage.removeItem('alga_crm_draft'); } catch(
 
 function formTemizle() {
   otosaveSil();
-  ['f-yetkili','f-unvan','f-arac-sayisi','f-fiyat-oto','f-fiyat-self','f-not','f-rakip',
+  ['f-yetkili','f-unvan','f-yetkili-email','f-yetkili-tel','f-arac-sayisi','f-fiyat-oto','f-fiyat-self','f-not','f-rakip',
    'f-teklif-tutar','f-teklif-tarih',
    'f-su-sertlik','f-su-ph','f-su-ppm','f-su-ec'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
@@ -1122,6 +1147,8 @@ async function ziyaretKaydet() {
       istasyon_lng:secilenIstasyon.lng||null,
       yetkili_adi:document.getElementById('f-yetkili').value,
       yetkili_unvan:document.getElementById('f-unvan').value,
+      yetkili_email:document.getElementById('f-yetkili-email').value||null,
+      yetkili_telefon:document.getElementById('f-yetkili-tel').value||null,
       urun:urunler,
       fiyat_otomatik:parseFloat(document.getElementById('f-fiyat-oto').value)||null,
       fiyat_selfservis:parseFloat(document.getElementById('f-fiyat-self').value)||null,
@@ -1217,7 +1244,7 @@ async function gecmisYukle() {
       return '<div class="gecmis-kart">'+
         '<div class="gecmis-ust"><div class="gecmis-kisi">'+(z.profiller&&z.profiller.ad_soyad?z.profiller.ad_soyad:'Bilinmiyor')+'</div><span class="badge '+cls+'">'+lbl+'</span></div>'+
         '<div class="gecmis-detay">'+
-        (z.yetkili_adi?'👤 '+z.yetkili_adi+(z.yetkili_unvan?' · '+z.yetkili_unvan:'')+'<br>':'')+
+        (z.yetkili_adi?'👤 '+z.yetkili_adi+(z.yetkili_unvan?' · '+z.yetkili_unvan:'')+(z.yetkili_email?' &nbsp;<a href="mailto:'+z.yetkili_email+'" style="color:var(--blue);text-decoration:none;">'+z.yetkili_email+'</a>':'')+(z.yetkili_telefon?' · <a href="tel:'+z.yetkili_telefon+'" style="color:var(--blue);text-decoration:none;">'+z.yetkili_telefon+'</a>':'')+'<br>':'')+
         (z.urun?'📦 '+z.urun+'<br>':'')+
         (z.fiyat_otomatik?'🚗 Oto: ₺'+z.fiyat_otomatik+(z.fiyat_selfservis?' &nbsp; Self: ₺'+z.fiyat_selfservis:'')+'<br>':z.fiyat_selfservis?'🚗 Self servis: ₺'+z.fiyat_selfservis+'<br>':'')+
         (z.rakip_ekipman?'🏢 '+z.rakip_ekipman+'<br>':'')+
@@ -1300,6 +1327,29 @@ function konumGoster(){
 
 // ——— DİĞER ———
 async function cikisYap() { if(!confirm('Çıkış yapmak istiyor musunuz?')) return; await sb.auth.signOut(); location.reload(); }
+
+// ——— NAVİGASYON SHEET ———
+function navSheetAc() {
+  if(!secilenIstasyon||!secilenIstasyon.lat||!secilenIstasyon.lng){ toast('Bu istasyonun koordinatı yok'); return; }
+  var overlay = document.getElementById('nav-sheet-overlay');
+  var sheet = document.getElementById('nav-sheet');
+  overlay.classList.add('acik');
+  sheet.style.display = 'block';
+  // Hafif aşağıdan yukarı animasyon
+  sheet.style.transform = 'translateY(100%)';
+  sheet.style.transition = 'transform .25s cubic-bezier(.4,0,.2,1)';
+  requestAnimationFrame(function(){ sheet.style.transform = 'translateY(0)'; });
+}
+function navSheetKapat() {
+  var overlay = document.getElementById('nav-sheet-overlay');
+  var sheet = document.getElementById('nav-sheet');
+  sheet.style.transform = 'translateY(100%)';
+  setTimeout(function(){
+    overlay.classList.remove('acik');
+    sheet.style.display = 'none';
+    sheet.style.transform = '';
+  }, 230);
+}
 
 // ——— ROTA / NAVİGASYON ———
 function rotaAc(tip) {
