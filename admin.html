@@ -925,11 +925,12 @@ async function saticiYonetimYukle(){
   var bayiOps = '<option value="">-- Seç --</option>'+
     tumBayiler.map(function(b){ return '<option value="'+b.id+'">'+b.ad+'</option>'; }).join('');
   var rolOps = [
-    {v:'satici',      l:'🚗 Satıcı'},
-    {v:'satis_muduru',l:'📊 Satış Müdürü'},
-    {v:'genel_mudur', l:'🏢 Genel Müdür'},
-    {v:'yk_baskani',  l:'👑 YK Başkanı'},
-    {v:'admin',       l:'🔑 Admin'}
+    {v:'satici',         l:'🚗 Satıcı'},
+    {v:'satis_muduru',   l:'📊 Satış Müdürü'},
+    {v:'genel_mudur',    l:'🏢 Genel Müdür'},
+    {v:'yk_baskani',     l:'👑 YK Başkanı'},
+    {v:'teknik_servis',  l:'🔧 Teknik Servis'},
+    {v:'admin',          l:'🔑 Admin'}
   ].map(function(r){ return '<option value="'+r.v+'">'+r.l+'</option>'; }).join('');
 
   tbody.innerHTML = profiller.map(function(p){
@@ -976,19 +977,16 @@ async function yeniSaticiEkle(){
   // Rastgele geçici şifre — kullanıcı davet linki ile kendi şifresini belirleyecek
   var tempSifre = 'Alga' + Math.random().toString(36).slice(-8) + '!7';
   try {
-    // 1. Auth kullanıcısı oluştur
-    var authR = await fetch(SUPABASE_URL+'/auth/v1/signup',{
-      method:'POST',
-      headers:{'apikey':SUPABASE_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({email:email, password:tempSifre})
-    });
-    var authD = await authR.json();
+    // 1. Auth kullanıcısı oluştur (Supabase JS client)
+    var signUpResult = await sb.auth.signUp({ email: email, password: tempSifre });
+    var authErr  = signUpResult.error;
+    var authData = signUpResult.data;
+
     // "Zaten kayıtlı" hatası → sadece davet maili gönder
-    if(!authR.ok){
-      var errMsg = authD.msg||authD.message||authD.error_description||'';
+    if(authErr){
+      var errMsg = authErr.message || '';
       if(errMsg.toLowerCase().includes('already') || errMsg.toLowerCase().includes('registered')){
         msg.textContent='Kullanıcı bulunuyor...';
-        // Mevcut kullanıcının UUID'sini RPC ile al
         var idR = await fetch(SUPABASE_URL+'/rest/v1/rpc/get_user_id_by_email',{
           method:'POST',
           headers:hdrs({'Content-Type':'application/json'}),
@@ -996,14 +994,12 @@ async function yeniSaticiEkle(){
         });
         var existingId = await idR.json();
         if(existingId){
-          // Profil kaydını oluştur / güncelle
           await fetch(SUPABASE_URL+'/rest/v1/profiller',{
             method:'POST',
             headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal,resolution=merge-duplicates'}),
             body:JSON.stringify({id:existingId, ad_soyad:ad, rol:rol, email:email})
           });
         }
-        // Şifre sıfırlama e-postası gönder
         msg.textContent='Davet e-postası gönderiliyor...';
         await sb.auth.resetPasswordForEmail(email, {
           redirectTo: 'https://sadikalmali4.github.io/alga-crm/harita.html'
@@ -1018,7 +1014,7 @@ async function yeniSaticiEkle(){
       msg.textContent='Hata: '+errMsg;
       return;
     }
-    var userId = (authD.user ? authD.user.id : null) || authD.id;
+    var userId = authData && authData.user ? authData.user.id : null;
     if(!userId){ msg.style.color='#e02424'; msg.textContent='ID alınamadı.'; return; }
 
     // 2. Profil kaydı oluştur
