@@ -100,9 +100,20 @@
     <button id="tabBtn-takipler" class="btn btn-white" onclick="tabGec('takipler')">🔄 Takipler</button>
     <button id="tabBtn-bayiler" class="btn btn-white" onclick="tabGec('bayiler')">🏢 Bayiler</button>
     <button id="tabBtn-kullanicilar" class="btn btn-white edit-only" onclick="tabGec('kullanicilar')">👤 Satıcılar</button>
+    <button id="tabBtn-kisaadlar" class="btn btn-white edit-only" onclick="tabGec('kisaadlar')">🏷️ Kısa Adlar</button>
   </div>
   <div class="header-right">
     <span class="readonly-badge">👁 Salt Okunur Mod</span>
+    <!-- Admin: rol simülatörü -->
+    <select id="test-rol-sel" class="btn btn-white edit-only" title="Başka bir rolün görünümünü test et"
+      style="font-size:11px;padding:5px 9px;cursor:pointer;max-width:170px;"
+      onchange="testRolDegistir(this.value)">
+      <option value="">👁️ Rol Test Et</option>
+      <option value="yk_baskani">👑 YK Başkanı gibi gör</option>
+      <option value="genel_mudur">🏢 Genel Müdür gibi gör</option>
+      <option value="satis_muduru">📊 Satış Müdürü gibi gör</option>
+      <option value="satici">🚗 Satıcı gibi gör</option>
+    </select>
     <span id="rol-goster" style="font-size:12px;color:rgba(255,255,255,.7);"></span>
     <a href="/alga-crm/harita.html" class="btn btn-white">← Haritaya Dön</a>
     <button class="btn btn-white edit-only" onclick="csvIndir()">⬇ CSV İndir</button>
@@ -306,6 +317,48 @@
           </tr>
         </thead>
         <tbody id="satici-yonetim-tbody"><tr><td colspan="6" class="bos">Yükleniyor...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: KISA ADLAR -->
+<div id="tab-kisaadlar" style="display:none;">
+  <div class="container">
+    <div class="tablo-kart" style="margin-bottom:22px;">
+      <div class="tablo-baslik">
+        🏷️ İstasyon Kısa Adları
+        <small>Arama kolaylığı için takma ad tanımlayın — "maslak opet" yerine kısa ad kullanabilirsiniz</small>
+      </div>
+      <div style="padding:18px 20px;border-bottom:1px solid var(--gray100);display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="f-grup" style="flex:1;min-width:220px;">
+          <label>İstasyon Adı (tam veya kısmı yaz)</label>
+          <input type="text" id="ka-ist-ara" placeholder="Örn: OPET MASLAK..." oninput="kaIstasyonAra(this.value)"
+            style="padding:9px 12px;border:1.5px solid var(--gray200);border-radius:8px;font-size:13px;font-family:inherit;" autocomplete="off"/>
+          <div id="ka-ist-sonuclar" style="position:absolute;background:white;border:1px solid var(--gray200);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);max-height:200px;overflow-y:auto;z-index:100;width:320px;display:none;"></div>
+        </div>
+        <div class="f-grup" style="flex:1;min-width:200px;">
+          <label>Kısa Ad / Takma Ad</label>
+          <input type="text" id="ka-kisa-ad" placeholder="Örn: Maslak OPET"
+            style="padding:9px 12px;border:1.5px solid var(--gray200);border-radius:8px;font-size:13px;font-family:inherit;"/>
+        </div>
+        <div class="f-grup" style="min-width:180px;">
+          <label>Not (opsiyonel)</label>
+          <input type="text" id="ka-notlar" placeholder="Ek bilgi..."
+            style="padding:9px 12px;border:1.5px solid var(--gray200);border-radius:8px;font-size:13px;font-family:inherit;"/>
+        </div>
+        <button class="btn btn-green" onclick="kaKaydet()">💾 Kaydet</button>
+        <input type="hidden" id="ka-ist-secilen" value=""/>
+        <span id="ka-mesaj" style="font-size:12px;color:#6b7280;align-self:center;"></span>
+      </div>
+      <table>
+        <thead><tr>
+          <th>İstasyon Adı</th>
+          <th>Kısa Ad</th>
+          <th>Not</th>
+          <th style="width:100px;">İşlem</th>
+        </tr></thead>
+        <tbody id="ka-tbody"><tr><td colspan="4" class="bos">Yükleniyor...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -1326,7 +1379,7 @@ async function takipleriYukle(){
 }
 
 function tabGec(tab){
-  ['raporlar','takipler','bayiler','kullanicilar'].forEach(function(t){
+  ['raporlar','takipler','bayiler','kullanicilar','kisaadlar'].forEach(function(t){
     document.getElementById('tab-'+t).style.display = t===tab?'block':'none';
     var btn = document.getElementById('tabBtn-'+t);
     if(btn) btn.classList.toggle('aktif', t===tab);
@@ -1342,6 +1395,131 @@ function tabGec(tab){
     }
   }
   if(tab==='kullanicilar'){ bayileriYukle(); kullanicilariYukle(); }
+  if(tab==='kisaadlar') kaListeYukle();
+}
+
+// ══════ ROL SİMÜLATÖRÜ (Admin'in başka rolleri test etmesi) ══════
+var _gercekRol = null;
+var _gercekId  = null;
+
+function testRolDegistir(rol) {
+  // Gerçek rolü kaydet
+  if(!_gercekRol){ _gercekRol = _mevcutRol; _gercekId = _mevcutKullaniciId; }
+
+  if(!rol){
+    // Admin görünümüne geri dön
+    _mevcutRol = _gercekRol;
+    _mevcutKullaniciId = _gercekId;
+    document.body.classList.remove('salt-okunur');
+    var rolEl = document.getElementById('rol-goster');
+    if(rolEl) rolEl.textContent = (_mevcutAd||'') + ' · ' + (ROL_ETIKET[_gercekRol]||_gercekRol);
+  } else {
+    _mevcutRol = rol;
+    _mevcutKullaniciId = (rol==='satici') ? (document.getElementById('f-satici').value || _gercekId) : _gercekId;
+    document.body.classList.add('salt-okunur');
+    var rolEl = document.getElementById('rol-goster');
+    if(rolEl) rolEl.style.color = '#fde68a';
+    if(rolEl) rolEl.textContent = '👁️ ' + (ROL_ETIKET[rol]||rol) + ' olarak görüntüleniyor';
+  }
+  raporYukle();
+}
+
+// ══════ KISA AD YÖNETİMİ ══════
+var _kaIstasyonlar = []; // Cached istasyon listesi for autocomplete
+
+async function kaListeYukle(){
+  var tbody = document.getElementById('ka-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="4" class="bos">Yükleniyor...</td></tr>';
+  try {
+    var r = await fetch(SUPABASE_URL+'/rest/v1/istasyon_meta?select=*&order=kisa_ad', {headers:hdrs()});
+    var arr = await r.json();
+    if(!Array.isArray(arr)||arr.length===0){ tbody.innerHTML='<tr><td colspan="4" class="bos">Henüz kısa ad tanımlanmamış</td></tr>'; return; }
+    tbody.innerHTML = arr.map(function(m){
+      return '<tr>'+
+        '<td style="padding:10px 14px;font-size:12px;color:#374151;max-width:300px;overflow:hidden;text-overflow:ellipsis;">'+m.istasyon_adi+'</td>'+
+        '<td style="padding:10px 14px;font-size:13px;font-weight:600;color:#5a8a1a;">🏷️ '+m.kisa_ad+'</td>'+
+        '<td style="padding:10px 14px;font-size:12px;color:#9ca3af;">'+( m.notlar||'—')+'</td>'+
+        '<td style="padding:10px 14px;">'+
+          '<button onclick="kaSil(\''+m.istasyon_adi.replace(/'/g,"\\'")+'\')" style="padding:4px 10px;border:1px solid #ef4444;background:#fef2f2;color:#dc2626;border-radius:6px;font-size:11px;cursor:pointer;">Sil</button>'+
+        '</td>'+
+      '</tr>';
+    }).join('');
+  } catch(e){
+    tbody.innerHTML='<tr><td colspan="4" class="bos">Hata: '+e.message+'</td></tr>';
+  }
+}
+
+function kaIstasyonAra(kelime){
+  var kap = document.getElementById('ka-ist-sonuclar');
+  if(!kap) return;
+  if(kelime.length < 2){ kap.style.display='none'; return; }
+  var k = kelime.toLowerCase();
+  // Statik liste yoksa Supabase'den ara
+  if(!_kaIstasyonlar.length){
+    // Önce ziyaretler tablosundan unique istasyon adlarını çek
+    fetch(SUPABASE_URL+'/rest/v1/ziyaretler?select=istasyon_adi&limit=5000', {headers:hdrs()})
+      .then(function(r){return r.json();})
+      .then(function(arr){
+        if(Array.isArray(arr)){
+          var setler = {};
+          arr.forEach(function(z){ if(z.istasyon_adi) setler[z.istasyon_adi]=true; });
+          _kaIstasyonlar = Object.keys(setler).sort();
+        }
+        kaIstasyonAra(kelime); // Retry
+      }).catch(function(){});
+    return;
+  }
+  var sonuclar = _kaIstasyonlar.filter(function(ad){ return ad.toLowerCase().includes(k); }).slice(0,8);
+  if(!sonuclar.length){ kap.style.display='none'; return; }
+  kap.innerHTML = sonuclar.map(function(ad){
+    return '<div onclick="kaIstasyonSec(\''+ad.replace(/'/g,"\\'")+'\')" style="padding:9px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f3f4f6;" onmouseover="this.style.background=\'#f0f7e6\'" onmouseout="this.style.background=\'\'">'+ ad+'</div>';
+  }).join('');
+  kap.style.display = 'block';
+}
+
+function kaIstasyonSec(ad){
+  document.getElementById('ka-ist-ara').value = ad;
+  document.getElementById('ka-ist-secilen').value = ad;
+  document.getElementById('ka-ist-sonuclar').style.display = 'none';
+}
+
+async function kaKaydet(){
+  var istAdi = document.getElementById('ka-ist-secilen').value || document.getElementById('ka-ist-ara').value.trim();
+  var kisaAd = document.getElementById('ka-kisa-ad').value.trim();
+  var notlar = document.getElementById('ka-notlar').value.trim();
+  var msg = document.getElementById('ka-mesaj');
+  if(!istAdi){ msg.style.color='#e02424'; msg.textContent='İstasyon seçin'; return; }
+  if(!kisaAd){ msg.style.color='#e02424'; msg.textContent='Kısa ad girin'; return; }
+  msg.textContent = 'Kaydediliyor...';
+  try {
+    var r = await fetch(SUPABASE_URL+'/rest/v1/istasyon_meta', {
+      method:'POST',
+      headers: hdrs({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=representation'}),
+      body: JSON.stringify({istasyon_adi:istAdi, kisa_ad:kisaAd, notlar:notlar||null, guncelleme_tarihi:new Date().toISOString()})
+    });
+    if(r.ok){
+      msg.style.color='#16a34a'; msg.textContent='✅ Kısa ad kaydedildi!';
+      document.getElementById('ka-ist-ara').value='';
+      document.getElementById('ka-ist-secilen').value='';
+      document.getElementById('ka-kisa-ad').value='';
+      document.getElementById('ka-notlar').value='';
+      kaListeYukle();
+    } else {
+      var d = await r.json();
+      msg.style.color='#e02424'; msg.textContent='Hata: '+(d.message||JSON.stringify(d));
+    }
+  } catch(e){ msg.style.color='#e02424'; msg.textContent='Bağlantı hatası: '+e.message; }
+}
+
+async function kaSil(istAdi){
+  if(!confirm('"'+istAdi+'" için kısa ad silinsin mi?')) return;
+  try {
+    await fetch(SUPABASE_URL+'/rest/v1/istasyon_meta?istasyon_adi=eq.'+encodeURIComponent(istAdi), {
+      method:'DELETE', headers:hdrs()
+    });
+    kaListeYukle();
+  } catch(e){ alert('Hata: '+e.message); }
 }
 </script>
 </body>

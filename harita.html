@@ -648,6 +648,7 @@ var istasyonlar = [], ISTASYON_DATA = [], ziyaretRenkMap = {};
 var secilenIstasyon = null, secilenSonuc = null, mevcutKullanici = null;
 var map = null, secilenFotoFile = null, markerLayerMap = {};
 var _haritaRolu = false; // Sadece harita görüntüleyici
+var kisaAdMap = {}; // kisa_ad.toLowerCase() → istasyon nesnesi
 
 const SONUC_RENK = {
   sicak:'#ef4444', kararsiz:'#6b7280', soguk:'#3b82f6',
@@ -715,10 +716,30 @@ function haritaBaslat() {
   map.on('click', _haritaClickHandler);
   document.getElementById('harita-legend').style.display = 'block';
 
+  // Kısa adları yükle (arama için)
+  fetch(SUPABASE_URL+'/rest/v1/istasyon_meta?select=istasyon_adi,kisa_ad,notlar', {headers:{'apikey':SUPABASE_KEY}})
+    .then(function(r){return r.json();})
+    .then(function(arr){
+      if(Array.isArray(arr)) arr.forEach(function(m){
+        if(m.kisa_ad) kisaAdMap[m.kisa_ad.toLowerCase()] = m.istasyon_adi;
+        // Istasyon_meta verilerini sakla (istasyon yüklendikten sonra merge edilecek)
+        if(!window._kaMetaCache) window._kaMetaCache = {};
+        window._kaMetaCache[m.istasyon_adi] = m;
+      });
+    }).catch(function(){});
+
   fetch('/alga-crm/istasyonlar.json')
     .then(function(r){return r.json();})
     .then(function(data){
       ISTASYON_DATA = data;
+      // Kısa adları istasyon nesnelerine merge et
+      if(window._kaMetaCache){
+        ISTASYON_DATA.forEach(function(ist){
+          var meta = window._kaMetaCache[ist.adi];
+          if(meta){ ist.kisa_ad = meta.kisa_ad; ist.ka_notlar = meta.notlar; }
+        });
+      }
+      istasyonlar = ISTASYON_DATA; // aramaYap için
       fetch(SUPABASE_URL+'/rest/v1/ziyaretler?select=id,istasyon_adi,istasyon_marka,sonuc,istasyon_lat,istasyon_lng,not_metni&order=created_at.desc&limit=5000',{headers:{'apikey':SUPABASE_KEY}})
         .then(function(r){return r.json();}).then(function(zv){
           if(Array.isArray(zv)){
@@ -994,20 +1015,38 @@ function aramaYap(kelime) {
   var kutu=document.getElementById('arama-sonuclar');
   if(kelime.length<2){ kutu.style.display='none'; return; }
   var kelimeler=kelime.toLowerCase().trim().split(/\s+/).filter(Boolean);
+
+  // 1) Kısa ad ile tam eşleşme → öne al
+  var kisaAdEslesen = [];
+  Object.keys(kisaAdMap).forEach(function(ka){
+    if(kelimeler.every(function(k){ return ka.includes(k); })){
+      var istAdi = kisaAdMap[ka];
+      var ist = istasyonlar.find(function(s){ return s.adi===istAdi; });
+      if(ist && kisaAdEslesen.indexOf(ist)<0) kisaAdEslesen.push(ist);
+    }
+  });
+
+  // 2) Normal arama (adi, marka, il, ilce, adres + kisa_ad)
   var sonuclar=istasyonlar.filter(function(s){
-    var aralanacak=[s.adi||'',s.marka||'',s.ilce||'',s.il||'',s.adres||''].join(' ').toLowerCase();
+    var aralanacak=[s.adi||'',s.marka||'',s.ilce||'',s.il||'',s.adres||'',s.kisa_ad||''].join(' ').toLowerCase();
     return kelimeler.every(function(k){ return aralanacak.includes(k); });
-  }).slice(0,8);
-  if(!sonuclar.length){ kutu.style.display='none'; return; }
-  kutu.innerHTML=sonuclar.map(function(s){
+  });
+
+  // Kısa ad eşleşenlerini öne al, tekrarları kaldır, max 10
+  var digerler = sonuclar.filter(function(s){ return kisaAdEslesen.indexOf(s)<0; });
+  var birlesik = kisaAdEslesen.concat(digerler).slice(0,10);
+
+  if(!birlesik.length){ kutu.style.display='none'; return; }
+  kutu.innerHTML=birlesik.map(function(s){
     var konum=[s.ilce,s.il].filter(Boolean).join(' / ');
     var ozelBadge = s.ozel ? '<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:4px;">📍 Özel</span>' : '';
+    var kisaAdBadge = s.kisa_ad ? '<span style="background:#e0f2fe;color:#0369a1;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:4px;">🏷️ '+s.kisa_ad+'</span>' : '';
     var idStr = String(s.id);
     var onclick = s.ozel
       ? 'aramaSecimOzel(\''+idStr+'\')'
       : 'aramaSecim('+idStr+')';
     return '<div class="arama-sonuc-item" onclick="'+onclick+'">'+
-      '<div class="arama-sonuc-ad">'+s.adi+ozelBadge+'</div>'+
+      '<div class="arama-sonuc-ad">'+s.adi+kisaAdBadge+ozelBadge+'</div>'+
       '<div class="arama-sonuc-adres">'+(s.marka&&!s.ozel?'<b>'+s.marka+'</b> · ':'')+
       (konum?'<span style="color:#7ab528;font-weight:600;">'+konum+'</span>':(s.adres||''))+
       '</div></div>';
