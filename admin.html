@@ -324,6 +324,7 @@
 <script>
 const SUPABASE_URL = 'https://rbcofacflhkrquhefqzj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJiY29mYWNmbGhrcnF1aGVmcXpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzODE1MjIsImV4cCI6MjA5MTk1NzUyMn0.iFFJWiR8d9ICFOD0mxBHKK8KAhmDowc-6n02461q3eQ';
+const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJiY29mYWNmbGhrcnF1aGVmcXpqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjM4MTUyMiwiZXhwIjoyMDkxOTU3NTIyfQ.ws5zStBOdJE7AOO4vnkdnCB94O1rVpvYtpSAG9vMOZ8';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 var tumVeriler = [];
@@ -977,33 +978,38 @@ async function yeniSaticiEkle(){
   // Rastgele geçici şifre — kullanıcı davet linki ile kendi şifresini belirleyecek
   var tempSifre = 'Alga' + Math.random().toString(36).slice(-8) + '!7';
   try {
-    // 1. Auth kullanıcısı oluştur (Supabase JS client)
-    var signUpResult = await sb.auth.signUp({ email: email, password: tempSifre });
-    var authErr  = signUpResult.error;
-    var authData = signUpResult.data;
+    // 1. Auth kullanıcısı oluştur — Admin API (service role key)
+    var adminR = await fetch(SUPABASE_URL+'/auth/v1/admin/users', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email: email, password: tempSifre, email_confirm: true })
+    });
+    var adminD = await adminR.json();
 
-    // "Zaten kayıtlı" hatası → sadece davet maili gönder
-    if(authErr){
-      var errMsg = authErr.message || '';
-      if(errMsg.toLowerCase().includes('already') || errMsg.toLowerCase().includes('registered')){
-        msg.textContent='Kullanıcı bulunuyor...';
-        var idR = await fetch(SUPABASE_URL+'/rest/v1/rpc/get_user_id_by_email',{
-          method:'POST',
-          headers:hdrs({'Content-Type':'application/json'}),
-          body:JSON.stringify({user_email:email})
+    // Zaten kayıtlı → profili güncelle + şifre sıfırlama gönder
+    if(!adminR.ok){
+      var errMsg = adminD.msg || adminD.message || adminD.error_description || JSON.stringify(adminD);
+      if(adminR.status === 422 || errMsg.toLowerCase().includes('already') || errMsg.toLowerCase().includes('registered')){
+        msg.textContent='Kullanıcı zaten var, profil güncelleniyor...';
+        // Kullanıcının mevcut ID'sini admin API'den bul
+        var listR = await fetch(SUPABASE_URL+'/auth/v1/admin/users?email='+encodeURIComponent(email), {
+          headers: { 'apikey': SUPABASE_SERVICE_KEY, 'Authorization': 'Bearer '+SUPABASE_SERVICE_KEY }
         });
-        var existingId = await idR.json();
+        var listD = await listR.json();
+        var existingId = listD.users && listD.users[0] ? listD.users[0].id : null;
         if(existingId){
-          await fetch(SUPABASE_URL+'/rest/v1/profiller',{
-            method:'POST',
-            headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal,resolution=merge-duplicates'}),
-            body:JSON.stringify({id:existingId, ad_soyad:ad, rol:rol, email:email})
+          await fetch(SUPABASE_URL+'/rest/v1/profiller', {
+            method: 'POST',
+            headers: hdrs({'Content-Type':'application/json','Prefer':'return=minimal,resolution=merge-duplicates'}),
+            body: JSON.stringify({id: existingId, ad_soyad: ad, rol: rol, email: email})
           });
         }
         msg.textContent='Davet e-postası gönderiliyor...';
-        await sb.auth.resetPasswordForEmail(email, {
-          redirectTo: 'https://sadikalmali4.github.io/alga-crm/harita.html'
-        });
+        await sb.auth.resetPasswordForEmail(email, { redirectTo: 'https://sadikalmali4.github.io/alga-crm/harita.html' });
         msg.style.color='#f59e0b';
         msg.innerHTML='⚠️ <strong>'+email+'</strong> zaten sistemde kayıtlıydı.<br>'+
           '<small style="color:#6b7280">📧 Şifre belirleme e-postası gönderildi, profil güncellendi.</small>';
@@ -1014,7 +1020,7 @@ async function yeniSaticiEkle(){
       msg.textContent='Hata: '+errMsg;
       return;
     }
-    var userId = authData && authData.user ? authData.user.id : null;
+    var userId = adminD.id;
     if(!userId){ msg.style.color='#e02424'; msg.textContent='ID alınamadı.'; return; }
 
     // 2. Profil kaydı oluştur
