@@ -803,30 +803,48 @@ function ziyaretKonumMarkerEkle(ziyaretler){
   if(!_epdk_adlari){
     _epdk_adlari = new Set(ISTASYON_DATA.map(function(s){ return s.adi; }));
   }
-  var SONUC_LBL = {sicak:'🔥 Sıcak', kararsiz:'❓ Kararsız', soguk:'❄️ Soğuk', teklif:'📋 Teklif', takip:'🔄 Takip', anlasma:'✅ Anlaştı'};
+  // Arama için dizi — sadece bir kez ekle
+  var _aramaEklendi = new Set(istasyonlar.map(function(s){ return s.adi; }));
+
   ziyaretler.forEach(function(z){
     if(!z.istasyon_lat || !z.istasyon_lng) return;
-    // EPDK'da zaten varsa ekleme (renk zaten değişiyor)
+    // EPDK'da zaten varsa marker ekleme (renk zaten değişiyor)
     if(_epdk_adlari && _epdk_adlari.has(z.istasyon_adi)) return;
+
+    // ── Aramada çıksın: istasyonlar dizisine ekle (tekrarsız) ──
+    if(!_aramaEklendi.has(z.istasyon_adi)){
+      _aramaEklendi.add(z.istasyon_adi);
+      istasyonlar.push({
+        id: 'ziyaret_'+z.istasyon_adi.replace(/\s+/g,'_'),
+        adi: z.istasyon_adi,
+        marka: z.istasyon_marka || 'Özel',
+        adres: z.istasyon_adresi || 'Haritadan eklendi',
+        lat: z.istasyon_lat,
+        lng: z.istasyon_lng,
+        il: '', ilce: '',
+        ozel: true
+      });
+    }
+
     var renk = SONUC_RENK[z.sonuc] || SONUC_RENK.default;
-    // Kare/baklava şeklinde icon — EPDK yuvarlak markerlardan ayrışır
     var icon = L.divIcon({
       className:'',
       html:'<div style="width:14px;height:14px;background:'+renk+';border:2.5px solid white;border-radius:3px;box-shadow:0 0 0 1.5px '+renk+';transform:rotate(45deg);"></div>',
       iconSize:[14,14],
       iconAnchor:[7,7]
     });
-    var popup = '<div style="font-size:13px;min-width:160px;">'+
-      '<strong>'+(z.istasyon_adi||'—')+'</strong>'+
-      (z.istasyon_marka ? '<span style="color:#6b7280;margin-left:6px;font-size:11px;">'+z.istasyon_marka+'</span>' : '')+
-      '<div style="margin-top:4px;font-size:11px;color:'+renk+';">'+( SONUC_LBL[z.sonuc]||z.sonuc||'—')+'</div>'+
-      (z.not_metni ? '<div style="margin-top:4px;font-size:11px;color:#6b7280;max-width:200px;">'+z.not_metni.substring(0,80)+(z.not_metni.length>80?'…':'')+'</div>' : '')+
-      '</div>';
+    var istObj = {
+      id: 'ziyaret_'+z.istasyon_adi.replace(/\s+/g,'_'),
+      adi: z.istasyon_adi, marka: z.istasyon_marka||'Özel',
+      adres: z.istasyon_adresi||'', lat: z.istasyon_lat, lng: z.istasyon_lng,
+      il:'', ilce:'', ozel: true
+    };
     var marker = L.marker([z.istasyon_lat, z.istasyon_lng], {icon:icon});
-    marker.bindPopup(popup);
+    // Tıklayınca panel açılsın (popup değil, tam CRM paneli)
+    (function(ist){ marker.on('click', function(e){ e.originalEvent && e.originalEvent.stopPropagation(); istasyonSec(ist); }); })(istObj);
     marker.bindTooltip((z.istasyon_adi||'Ziyaret')+(z.istasyon_marka?' — '+z.istasyon_marka:''), {direction:'top', offset:[0,-8]});
     _clusterGroup.addLayer(marker);
-    _tumMarkerlar.push({marker:marker, ist:{lat:z.istasyon_lat, lng:z.istasyon_lng, adi:z.istasyon_adi, marka:z.istasyon_marka}, ziyaret:true, sonuc:z.sonuc});
+    _tumMarkerlar.push({marker:marker, ist:istObj, ziyaret:true, sonuc:z.sonuc});
   });
 }
 
