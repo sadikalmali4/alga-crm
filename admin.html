@@ -791,6 +791,42 @@ function ziyaretDetayAc(id){
         'style="width:100%;background:#7ab528;color:white;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">'+
         '💾 Konumu Kaydet</button>'+
       '</div>';
+
+    // ── Ziyaret İçeriği Düzenleme ──
+    var sonucSecenekler = ['sicak','kararsiz','soguk','anlasma','teklif','takipte'];
+    var sonucLblMap = {sicak:'🔥 Sıcak',kararsiz:'😐 Kararsız',soguk:'❄️ Soğuk',anlasma:'🤝 Anlaşma',teklif:'📋 Teklif',takipte:'🔔 Takipte'};
+    var sonucOpts = sonucSecenekler.map(function(s){
+      return '<option value="'+s+'"'+(z.sonuc===s?' selected':'')+'>'+sonucLblMap[s]+'</option>';
+    }).join('');
+    var paraBirimiOpts = ['TRY','EUR','USD'].map(function(p){
+      return '<option value="'+p+'"'+(z.teklif_para_birimi===p?' selected':'')+'>'+p+'</option>';
+    }).join('');
+    html +=
+      '<div style="border-top:1px solid #e5e7eb;margin-top:18px;padding-top:16px;" id="ziyaret-duzenle-panel">'+
+      '<div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">✏️ Ziyaret İçeriğini Düzenle</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">'+
+        '<div><label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:3px;">Sonuç</label>'+
+          '<select id="ze-sonuc" style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'">'+sonucOpts+'</select></div>'+
+        '<div><label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:3px;">Takip Tarihi</label>'+
+          '<input type="date" id="ze-takip" value="'+(z.takip_tarihi||'')+'" style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'"/></div>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 80px;gap:8px;margin-bottom:8px;">'+
+        '<div><label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:3px;">Teklif Tutarı</label>'+
+          '<input type="number" id="ze-teklif" value="'+(z.teklif_tutari||'')+'" placeholder="0" style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'"/></div>'+
+        '<div><label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:3px;">Para Birimi</label>'+
+          '<select id="ze-para" style="width:100%;padding:8px 6px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'">'+paraBirimiOpts+'</select></div>'+
+      '</div>'+
+      '<div style="margin-bottom:8px;"><label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:3px;">Ürün / Ekipman</label>'+
+        '<input type="text" id="ze-urun" value="'+(z.urun||'')+'" placeholder="Jetwash, Mstart, Vakum..." style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'"/></div>'+
+      '<div style="margin-bottom:12px;"><label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:3px;">Ziyaret Notu</label>'+
+        '<textarea id="ze-not" rows="3" placeholder="Ziyaret notları..." style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;resize:vertical;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'">'+(z.not_metni||'')+'</textarea></div>'+
+      '<button onclick="ziyaretKaydetDuzenle(\''+z.id+'\')" '+
+        'style="width:100%;background:#7ab528;color:white;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">'+
+        '💾 Ziyareti Güncelle</button>'+
+      '<button onclick="ziyaretSil(\''+z.id+'\')" '+
+        'style="width:100%;background:white;color:#e02424;border:1.5px solid #fca5a5;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;margin-top:6px;">'+
+        '🗑 Ziyareti Sil</button>'+
+      '</div>';
   }
 
   document.getElementById('detay-icerik').innerHTML = html;
@@ -1300,6 +1336,58 @@ async function saticiRolGuncelle(profilId, yeniRol){
     body:JSON.stringify({rol:yeniRol})
   });
   if(!r.ok) alert('Rol güncellenemedi: '+r.status);
+}
+
+// ═══ ZİYARET DÜZENLEME & SİLME (sadece admin) ═══
+async function ziyaretKaydetDuzenle(id){
+  var btn = event && event.target;
+  if(btn){ btn.disabled=true; btn.textContent='Kaydediliyor...'; }
+  var guncelleme = {
+    sonuc: document.getElementById('ze-sonuc').value,
+    takip_tarihi: document.getElementById('ze-takip').value || null,
+    teklif_tutari: parseFloat(document.getElementById('ze-teklif').value)||null,
+    teklif_para_birimi: document.getElementById('ze-para').value,
+    urun: document.getElementById('ze-urun').value.trim()||null,
+    not_metni: document.getElementById('ze-not').value.trim()||null
+  };
+  var r = await fetch(SUPABASE_URL+'/rest/v1/ziyaretler?id=eq.'+id,{
+    method:'PATCH',
+    headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal'}),
+    body:JSON.stringify(guncelleme)
+  });
+  if(r.ok){
+    var z = tumVeriler.find(function(x){ return x.id===id; });
+    if(z){ Object.assign(z, guncelleme); }
+    raporFiltrele();
+    document.getElementById('detay-modal').style.display='none';
+    var toast=document.createElement('div');
+    toast.textContent='✅ Ziyaret güncellendi';
+    toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2937;color:white;padding:10px 22px;border-radius:20px;font-size:13px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.25);';
+    document.body.appendChild(toast);
+    setTimeout(function(){ toast.remove(); }, 2500);
+  } else {
+    alert('Güncelleme başarısız: '+r.status);
+    if(btn){ btn.disabled=false; btn.textContent='💾 Ziyareti Güncelle'; }
+  }
+}
+async function ziyaretSil(id){
+  if(!confirm('Bu ziyareti silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) return;
+  var r = await fetch(SUPABASE_URL+'/rest/v1/ziyaretler?id=eq.'+id,{
+    method:'DELETE',
+    headers:hdrs({'Prefer':'return=minimal'})
+  });
+  if(r.ok){
+    tumVeriler = tumVeriler.filter(function(x){ return x.id!==id; });
+    raporFiltrele();
+    document.getElementById('detay-modal').style.display='none';
+    var toast=document.createElement('div');
+    toast.textContent='🗑 Ziyaret silindi';
+    toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2937;color:white;padding:10px 22px;border-radius:20px;font-size:13px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.25);';
+    document.body.appendChild(toast);
+    setTimeout(function(){ toast.remove(); }, 2500);
+  } else {
+    alert('Silinemedi: '+r.status);
+  }
 }
 
 // ═══ ANLIK İSTASYON ADI DÜZENLEME (sadece admin) ═══

@@ -644,11 +644,12 @@ const FOTO_BUCKET = 'ziyaret-fotograflari';
 const ADMIN_EMAILS = ['sadika@alga.com.tr'];
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-var istasyonlar = [], ISTASYON_DATA = [], ziyaretRenkMap = {};
+var istasyonlar = [], ISTASYON_DATA = [], ziyaretRenkMap = {}, markaMap = {};
 var secilenIstasyon = null, secilenSonuc = null, mevcutKullanici = null;
 var map = null, secilenFotoFile = null, markerLayerMap = {};
 var _haritaRolu = false; // Sadece harita görüntüleyici
 var kisaAdMap = {}; // kisa_ad.toLowerCase() → istasyon nesnesi
+var _accessToken = null; // Global auth token
 
 const SONUC_RENK = {
   sicak:'#ef4444', kararsiz:'#6b7280', soguk:'#3b82f6',
@@ -665,6 +666,7 @@ async function girisYap() {
   document.getElementById('giris-hata').style.display = 'none';
   var { data, error } = await sb.auth.signInWithPassword({ email, password: sifre });
   if (error) { gosterHata('Hatalı e-posta veya şifre'); btn.disabled = false; btn.textContent = 'Giriş Yap'; return; }
+  if(data.session) _accessToken = data.session.access_token;
   await uygulamaBaslat(data.user);
 }
 function gosterHata(m) { var el=document.getElementById('giris-hata'); el.textContent=m; el.style.display='block'; }
@@ -745,16 +747,26 @@ function haritaBaslat() {
         });
       }
       istasyonlar = ISTASYON_DATA; // aramaYap için
-      fetch(SUPABASE_URL+'/rest/v1/ziyaretler?select=id,istasyon_adi,istasyon_marka,sonuc,istasyon_lat,istasyon_lng,not_metni&order=created_at.desc&limit=5000',{headers:{'apikey':SUPABASE_KEY}})
+      fetch(SUPABASE_URL+'/rest/v1/ziyaretler?select=id,istasyon_adi,istasyon_marka,sonuc,istasyon_lat,istasyon_lng,not_metni,urun&order=created_at.desc&limit=5000',{headers:{'apikey':SUPABASE_KEY}})
         .then(function(r){return r.json();}).then(function(zv){
           if(Array.isArray(zv)){
-            zv.forEach(function(z){ if(!ziyaretRenkMap[z.istasyon_adi]) ziyaretRenkMap[z.istasyon_adi]=z.sonuc; });
+            zv.forEach(function(z){
+              if(!ziyaretRenkMap[z.istasyon_adi]) ziyaretRenkMap[z.istasyon_adi]=z.sonuc;
+              // Marka haritası
+              if(z.urun){
+                var hw=z.urun.toLowerCase().indexOf('washstop')>=0;
+                var hi=z.urun.toLowerCase().indexOf('istobal')>=0;
+                if((hw||hi)&&!markaMap[z.istasyon_adi])
+                  markaMap[z.istasyon_adi]=(hw&&hi)?'her_ikisi':hw?'washstop':'istobal';
+              }
+            });
             istasyonlariHaritayaEkle();
             ziyaretKonumMarkerEkle(zv);
           } else {
             istasyonlariHaritayaEkle();
           }
-        }).catch(function(){ istasyonlariHaritayaEkle(); });
+          ozelNoktalariYukle();
+        }).catch(function(){ istasyonlariHaritayaEkle(); ozelNoktalariYukle(); });
     })
     .catch(function(e){ console.error('JSON yüklenemedi:',e); });
 }
@@ -781,11 +793,30 @@ function istasyonlariHaritayaEkle() {
   ISTASYON_DATA.forEach(function(ist){
     if(!ist.lat||!ist.lng) return;
     var renk = markerRenk(ist.adi);
-    var r = ziyaretRenkMap[ist.adi] ? 7 : 5;
-    var marker = L.circleMarker([ist.lat,ist.lng],{radius:r,fillColor:renk,color:'white',weight:1.5,opacity:1,fillOpacity:0.9});
-    marker.on('click',function(e){ e.originalEvent.stopPropagation(); istasyonSec(ist); });
+    var marka = markaMap[ist.adi];
+    var marker;
+    if(marka){
+      var sz = ziyaretRenkMap[ist.adi] ? 14 : 11;
+      var bClr = marka==='washstop'?'#1d4ed8':marka==='istobal'?'#ea580c':'#7c3aed';
+      var bTxt = marka==='washstop'?'W':marka==='istobal'?'İ':'⚙';
+      marker = L.marker([ist.lat, ist.lng], {icon: L.divIcon({
+        className:'',
+        html:'<div style="position:relative;width:'+sz+'px;height:'+sz+'px;">'
+          +'<div style="width:'+sz+'px;height:'+sz+'px;background:'+renk+';border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.3);"></div>'
+          +'<div style="position:absolute;bottom:-4px;right:-4px;width:10px;height:10px;background:'+bClr+';border-radius:50%;border:1.5px solid white;display:flex;align-items:center;justify-content:center;font-size:5px;font-weight:800;color:white;line-height:1;">'+bTxt+'</div>'
+          +'</div>',
+        iconSize:[sz+6,sz+6], iconAnchor:[(sz+6)/2,(sz+6)/2]
+      })});
+      marker._isBrandMarker = true;
+      marker._istAdi = ist.adi;
+    } else {
+      var r = ziyaretRenkMap[ist.adi] ? 7 : 5;
+      marker = L.circleMarker([ist.lat,ist.lng],{radius:r,fillColor:renk,color:'white',weight:1.5,opacity:1,fillOpacity:0.9});
+    }
+    marker.on('click',function(e){ e.originalEvent && e.originalEvent.stopPropagation(); istasyonSec(ist); });
     var ttKonum = [ist.ilce, ist.il].filter(Boolean).join(' / ');
-    marker.bindTooltip(ist.marka+' — '+ist.adi.substring(0,40)+(ttKonum?' · '+ttKonum:''),{direction:'top',offset:[0,-8]});
+    var ttMarka = marka ? (' 🔧 '+(marka==='washstop'?'Washstop':marka==='istobal'?'Istobal':'WS+İstobal')) : '';
+    marker.bindTooltip(ist.marka+' — '+ist.adi.substring(0,40)+(ttKonum?' · '+ttKonum:'')+ttMarka,{direction:'top',offset:[0,-8]});
     markerLayerMap[ist.adi] = marker;
     _tumMarkerlar.push({marker:marker, ist:ist});
     _clusterGroup.addLayer(marker);
@@ -848,6 +879,44 @@ function ziyaretKonumMarkerEkle(ziyaretler){
   });
 }
 
+// ——— ÖZEL NOKTALAR (Supabase'den yükle) ———
+function ozelNoktalariYukle() {
+  fetch(SUPABASE_URL+'/rest/v1/ozel_noktalar?select=id,adi,lat,lng&order=olusturma_tarihi.asc', {
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer '+(_accessToken || SUPABASE_KEY)
+    }
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(noktalar){
+    if(!Array.isArray(noktalar)) return;
+    noktalar.forEach(function(n){
+      if(!n.lat || !n.lng) return;
+      if(istasyonlar.find(function(s){ return s.id==='ozel_'+n.id; })) return;
+      var ozelIst = {
+        id: 'ozel_'+n.id, db_id: n.id,
+        adi: n.adi, marka: 'Özel Konum',
+        adres: 'Haritadan eklendi', ozel: true,
+        lat: n.lat, lng: n.lng, ilce: '', il: ''
+      };
+      istasyonlar.push(ozelIst);
+      if(_clusterGroup) {
+        var icon = L.divIcon({
+          className:'',
+          html:'<div style="width:14px;height:14px;background:#8b5cf6;border:2.5px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(139,92,246,.4);"></div>',
+          iconSize:[14,14], iconAnchor:[7,7]
+        });
+        var marker = L.marker([n.lat, n.lng], {icon: icon});
+        (function(ist){ marker.on('click', function(e){ e.originalEvent && e.originalEvent.stopPropagation(); istasyonSec(ist); }); })(ozelIst);
+        marker.bindTooltip('📍 '+n.adi, {direction:'top', offset:[0,-8]});
+        _clusterGroup.addLayer(marker);
+        _tumMarkerlar.push({marker: marker, ist: ozelIst});
+      }
+    });
+  })
+  .catch(function(e){ console.warn('Özel noktalar yüklenemedi:', e); });
+}
+
 function ziyaretFiltrele(mod) {
   if(!_clusterGroup) return;
   _aktifZiyaretFiltre = mod;
@@ -874,7 +943,24 @@ function ziyaretFiltrele(mod) {
 function markerRenkGuncelle(istAdi, sonuc) {
   ziyaretRenkMap[istAdi] = sonuc;
   var marker = markerLayerMap[istAdi];
-  if(marker) marker.setStyle({fillColor: SONUC_RENK[sonuc]||SONUC_RENK.default, radius:7});
+  if(!marker) return;
+  if(marker._isBrandMarker) {
+    var renk = SONUC_RENK[sonuc]||SONUC_RENK.default;
+    var marka = markaMap[istAdi];
+    var sz = 14;
+    var bClr = marka==='washstop'?'#1d4ed8':marka==='istobal'?'#ea580c':'#7c3aed';
+    var bTxt = marka==='washstop'?'W':marka==='istobal'?'İ':'⚙';
+    marker.setIcon(L.divIcon({
+      className:'',
+      html:'<div style="position:relative;width:'+sz+'px;height:'+sz+'px;">'
+        +'<div style="width:'+sz+'px;height:'+sz+'px;background:'+renk+';border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.3);"></div>'
+        +'<div style="position:absolute;bottom:-4px;right:-4px;width:10px;height:10px;background:'+bClr+';border-radius:50%;border:1.5px solid white;display:flex;align-items:center;justify-content:center;font-size:5px;font-weight:800;color:white;line-height:1;">'+bTxt+'</div>'
+        +'</div>',
+      iconSize:[sz+6,sz+6], iconAnchor:[(sz+6)/2,(sz+6)/2]
+    }));
+  } else {
+    marker.setStyle({fillColor: SONUC_RENK[sonuc]||SONUC_RENK.default, radius:7});
+  }
 }
 
 // ——— PANEL ———
@@ -1235,12 +1321,26 @@ async function ziyaretKaydet() {
     var resp=await Promise.race([
       fetch(SUPABASE_URL+'/rest/v1/ziyaretler',{
         method:'POST',
-        headers:{'apikey':SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+(_accessToken||SUPABASE_KEY),'Content-Type':'application/json','Prefer':'return=minimal'},
         body:JSON.stringify(ziyaret)
       }),
       new Promise(function(_,rej){setTimeout(function(){rej(new Error('Zaman aşımı (10sn)'));},10000);})
     ]);
-    if(!resp.ok){ var t=await resp.text(); throw new Error('HTTP '+resp.status+': '+t); }
+    if(!resp.ok){
+      var errTxt=await resp.text();
+      // Kolon yoksa (yetkili_email/telefon) bu alanlar olmadan tekrar dene
+      if(resp.status===400 && (errTxt.indexOf('yetkili_email')>=0||errTxt.indexOf('yetkili_telefon')>=0)){
+        delete ziyaret.yetkili_email; delete ziyaret.yetkili_telefon;
+        var resp2=await fetch(SUPABASE_URL+'/rest/v1/ziyaretler',{
+          method:'POST',
+          headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+(_accessToken||SUPABASE_KEY),'Content-Type':'application/json','Prefer':'return=minimal'},
+          body:JSON.stringify(ziyaret)
+        });
+        if(!resp2.ok){ var t2=await resp2.text(); throw new Error('HTTP '+resp2.status+': '+t2); }
+      } else {
+        throw new Error('HTTP '+resp.status+': '+errTxt);
+      }
+    }
     markerRenkGuncelle(secilenIstasyon.adi, secilenSonuc);
     otosaveSil(); // Taslağı temizle
     toast('✓ Ziyaret kaydedildi!');
@@ -1482,33 +1582,55 @@ function noktaIsimKaydet() {
   if(!isim){ document.getElementById('nokta-isim-input').focus(); return; }
   document.getElementById('nokta-isim-modal').style.display='none';
   document.getElementById('nokta-isim-input').value='';
-  // Geçici markeri koru, ama modu kapat
   _noktaEkleModu=false;
   var btn=document.getElementById('nokta-ekle-btn');
   btn.style.background=''; btn.style.color='';
   document.getElementById('harita').style.cursor='';
-  // Sentetik istasyon objesi oluştur
+  var lat = _noktaLat, lng = _noktaLng;
+  // Supabase ozel_noktalar tablosuna kaydet
+  fetch(SUPABASE_URL+'/rest/v1/ozel_noktalar', {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer '+(_accessToken||SUPABASE_KEY),
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    },
+    body: JSON.stringify({
+      adi: isim, lat: lat, lng: lng,
+      olusturan_id: mevcutKullanici ? mevcutKullanici.id : null
+    })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    var dbId = Array.isArray(data) && data[0] ? data[0].id : ('tmp_'+Date.now());
+    _noktaEkleFinalize(isim, lat, lng, dbId);
+  })
+  .catch(function(){
+    _noktaEkleFinalize(isim, lat, lng, 'tmp_'+Date.now());
+  });
+}
+function _noktaEkleFinalize(isim, lat, lng, dbId) {
   var ozelIst = {
-    id: 'ozel_'+Date.now(),
-    adi: isim,
-    marka: 'Özel Konum',
-    adres: 'Haritadan seçildi',
-    ozel: true,
-    lat: _noktaLat,
-    lng: _noktaLng,
-    ilce: '', il: '',
-    ozel: true
+    id: 'ozel_'+dbId, db_id: dbId,
+    adi: isim, marka: 'Özel Konum',
+    adres: 'Haritadan eklendi', ozel: true,
+    lat: lat, lng: lng, ilce: '', il: ''
   };
-  // Aramada çıksın diye listeye ekle
   istasyonlar.push(ozelIst);
-  // Marker güncelle — tıklanabilir yap
-  if(_noktaMarkerTemp){
-    _noktaMarkerTemp.bindPopup('<b>'+isim+'</b><br>📍 Özel konum').openPopup();
-    (function(ist){ _noktaMarkerTemp.on('click', function(){ istasyonSec(ist); }); })(ozelIst);
+  if(_noktaMarkerTemp) {
+    var icon = L.divIcon({
+      className:'',
+      html:'<div style="width:14px;height:14px;background:#8b5cf6;border:2.5px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(139,92,246,.4);"></div>',
+      iconSize:[14,14], iconAnchor:[7,7]
+    });
+    _noktaMarkerTemp.setIcon(icon);
+    _noktaMarkerTemp.bindTooltip('📍 '+isim, {direction:'top', offset:[0,-8]});
+    (function(ist){ _noktaMarkerTemp.on('click', function(e){ e.originalEvent && e.originalEvent.stopPropagation(); istasyonSec(ist); }); })(ozelIst);
+    _tumMarkerlar.push({marker: _noktaMarkerTemp, ist: ozelIst});
   }
-  // Paneli aç
   istasyonSec(ozelIst);
-  map.setView([_noktaLat, _noktaLng], Math.max(map.getZoom(), 14));
+  map.setView([lat, lng], Math.max(map.getZoom(), 14));
 }
 
 // ——— TEKLİF DURUMU ———
