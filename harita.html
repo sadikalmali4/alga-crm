@@ -272,9 +272,14 @@
   .mobil-filtre-bar button{flex:1;padding:8px 4px;border-radius:8px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:11px;font-family:inherit;font-weight:500;cursor:pointer;transition:all .15s;}
   /* ZİYARET YÜZDESİ */
   #ziyaret-yuzdesi{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);pointer-events:none;z-index:700;font-size:11px;color:rgba(107,114,128,0.7);white-space:nowrap;font-weight:500;letter-spacing:.02em;display:none;text-shadow:0 0 4px white,0 0 4px white;}
+  /* LEGEND COLLAPSE */
+  #legend-icerik{overflow:hidden;transition:max-height .25s ease;}
+  .legend-kapali #legend-icerik{display:none;}
+  .legend-kapali #legend-ok{transform:rotate(0deg);}
+  #legend-ok{display:inline-block;transform:rotate(90deg);}
   @media(max-width:700px){
     .mobil-filtre-bar{display:flex;}
-    .harita-legend{display:none!important;}
+    .harita-legend{bottom:56px!important;}
     #ziyaret-yuzdesi{bottom:62px;}
   }
 
@@ -356,24 +361,32 @@
 
 <!-- LEGEND + ZİYARET FİLTRESİ -->
 <div class="harita-legend" id="harita-legend" style="display:none;">
-  <div style="font-size:10px;font-weight:700;color:#6b7280;margin-bottom:6px;text-transform:uppercase;">Renk Anlamları</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#7ab528"></div>Ziyaret yok</div>
-  <div class="legend-item"><div style="width:10px;height:10px;background:#ef4444;border:1.5px solid white;border-radius:2px;transform:rotate(45deg);flex-shrink:0;"></div>İçe aktarılan ziyaret</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Sıcak</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Anlaştı</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div>Teklif verildi</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>Takipte</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div>Kararsız</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Soğuk</div>
-  <div style="border-top:1px solid #e5e7eb;margin:8px 0 6px;"></div>
-  <div style="font-size:10px;font-weight:700;color:#6b7280;margin-bottom:6px;text-transform:uppercase;">Filtre</div>
-  <div style="display:flex;flex-direction:column;gap:4px;">
-    <button onclick="ziyaretFiltrele('tumu')" id="zf-tumu" style="padding:4px 8px;border-radius:6px;border:1.5px solid #7ab528;background:#7ab528;color:white;font-size:11px;cursor:pointer;font-weight:600;">Tümü</button>
-    <button onclick="ziyaretFiltrele('ziyaret_edilenler')" id="zf-edilenler" style="padding:4px 8px;border-radius:6px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:11px;cursor:pointer;">🔴 Ziyaret Edilenler</button>
-    <button onclick="ziyaretFiltrele('ziyaret_edilmeyenler')" id="zf-edilmeyenler" style="padding:4px 8px;border-radius:6px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:11px;cursor:pointer;">🟢 Ziyaret Edilmeyenler</button>
+  <!-- Başlık: tıklayınca içerik aç/kapat -->
+  <div onclick="legendToggle()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0;">
+    <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;">🗺 Renk &amp; Filtre</div>
+    <span id="legend-ok" style="font-size:11px;color:#9ca3af;transition:transform .2s;">▸</span>
   </div>
-  <div style="border-top:1px solid #e5e7eb;margin:8px 0 6px;"></div>
-  <button onclick="konumGoster()" id="konum-btn" style="width:100%;padding:5px 8px;border-radius:6px;border:1.5px solid #3b82f6;background:#eff6ff;color:#1d4ed8;font-size:11px;cursor:pointer;font-weight:600;">📍 Konumumu Göster</button>
+  <!-- İçerik -->
+  <div id="legend-icerik">
+    <div style="margin-top:8px;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:6px;">Renk Anlamları</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#7ab528"></div>Ziyaret yok</div>
+    <div class="legend-item"><div style="width:10px;height:10px;background:#ef4444;border:1.5px solid white;border-radius:2px;transform:rotate(45deg);flex-shrink:0;"></div>İçe aktarılan ziyaret</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Sıcak</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Anlaştı</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div>Teklif verildi</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>Takipte</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div>Kararsız</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Soğuk</div>
+    <div style="border-top:1px solid #e5e7eb;margin:8px 0 6px;"></div>
+    <div style="font-size:10px;font-weight:700;color:#6b7280;margin-bottom:6px;text-transform:uppercase;">Filtre</div>
+    <div style="display:flex;flex-direction:column;gap:4px;">
+      <button onclick="ziyaretFiltrele('tumu')" id="zf-tumu" style="padding:4px 8px;border-radius:6px;border:1.5px solid #7ab528;background:#7ab528;color:white;font-size:11px;cursor:pointer;font-weight:600;">Tümü</button>
+      <button onclick="ziyaretFiltrele('ziyaret_edilenler')" id="zf-edilenler" style="padding:4px 8px;border-radius:6px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:11px;cursor:pointer;">🔴 Ziyaret Edilenler</button>
+      <button onclick="ziyaretFiltrele('ziyaret_edilmeyenler')" id="zf-edilmeyenler" style="padding:4px 8px;border-radius:6px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:11px;cursor:pointer;">🟢 Ziyaret Edilmeyenler</button>
+    </div>
+    <div style="border-top:1px solid #e5e7eb;margin:8px 0 6px;"></div>
+    <button onclick="konumGoster()" id="konum-btn" style="width:100%;padding:5px 8px;border-radius:6px;border:1.5px solid #3b82f6;background:#eff6ff;color:#1d4ed8;font-size:11px;cursor:pointer;font-weight:600;">📍 Konumumu Göster</button>
+  </div>
 </div>
 
 <!-- MOBİL ALTI FİLTRE BARI -->
@@ -742,7 +755,10 @@ function haritaBaslat() {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(map);
   L.control.zoom({position:'bottomright'}).addTo(map);
   map.on('click', _haritaClickHandler);
-  document.getElementById('harita-legend').style.display = 'block';
+  var leg = document.getElementById('harita-legend');
+  leg.style.display = 'block';
+  // Mobilde başlangıçta kapalı başlat
+  if(window.innerWidth <= 700) leg.classList.add('legend-kapali');
 
   // Kısa adları yükle (arama için)
   fetch(SUPABASE_URL+'/rest/v1/istasyon_meta?select=istasyon_adi,kisa_ad,notlar', {headers:{'apikey':SUPABASE_KEY}})
@@ -964,6 +980,11 @@ function ziyaretFiltrele(mod) {
       (mod === 'ziyaret_edilmeyenler' && !ziyaretVar);
     if(goster) _clusterGroup.addLayer(item.marker);
   });
+}
+
+function legendToggle() {
+  var leg = document.getElementById('harita-legend');
+  leg.classList.toggle('legend-kapali');
 }
 
 function ziyaretYuzdesiGuncelle() {
