@@ -267,6 +267,17 @@
   .legend-item{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
   .legend-item:last-child{margin-bottom:0;}
 
+  /* MOBİL ALTI FİLTRE BARI */
+  .mobil-filtre-bar{display:none;position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid #e5e7eb;padding:8px 10px;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:890;box-shadow:0 -2px 12px rgba(0,0,0,.1);gap:6px;}
+  .mobil-filtre-bar button{flex:1;padding:8px 4px;border-radius:8px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:11px;font-family:inherit;font-weight:500;cursor:pointer;transition:all .15s;}
+  /* ZİYARET YÜZDESİ */
+  #ziyaret-yuzdesi{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);pointer-events:none;z-index:700;font-size:11px;color:rgba(107,114,128,0.7);white-space:nowrap;font-weight:500;letter-spacing:.02em;display:none;text-shadow:0 0 4px white,0 0 4px white;}
+  @media(max-width:700px){
+    .mobil-filtre-bar{display:flex;}
+    .harita-legend{display:none!important;}
+    #ziyaret-yuzdesi{bottom:62px;}
+  }
+
   /* KONUM MARKERİ */
   .konum-marker-icon{position:relative;width:18px;height:18px;}
   .konum-marker-nokta{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:12px;height:12px;background:#2563eb;border-radius:50%;border:2.5px solid white;box-shadow:0 0 0 2px #2563eb;z-index:2;}
@@ -364,6 +375,16 @@
   <div style="border-top:1px solid #e5e7eb;margin:8px 0 6px;"></div>
   <button onclick="konumGoster()" id="konum-btn" style="width:100%;padding:5px 8px;border-radius:6px;border:1.5px solid #3b82f6;background:#eff6ff;color:#1d4ed8;font-size:11px;cursor:pointer;font-weight:600;">📍 Konumumu Göster</button>
 </div>
+
+<!-- MOBİL ALTI FİLTRE BARI -->
+<div class="mobil-filtre-bar" id="mobil-filtre-bar">
+  <button id="mzf-tumu" onclick="ziyaretFiltrele('tumu')" style="background:#7ab528;color:white;border-color:#7ab528;font-weight:600;">Tümü</button>
+  <button id="mzf-edilenler" onclick="ziyaretFiltrele('ziyaret_edilenler')">🔴 Ziyaret Edilenler</button>
+  <button id="mzf-edilmeyenler" onclick="ziyaretFiltrele('ziyaret_edilmeyenler')">🟢 Edilmeyenler</button>
+</div>
+
+<!-- ZİYARET YÜZDESİ OVERLAY -->
+<div id="ziyaret-yuzdesi"></div>
 
 <!-- CRM PANELİ -->
 <div id="crm-panel">
@@ -747,23 +768,25 @@ function haritaBaslat() {
         });
       }
       istasyonlar = ISTASYON_DATA; // aramaYap için
-      fetch(SUPABASE_URL+'/rest/v1/ziyaretler?select=id,istasyon_adi,istasyon_marka,sonuc,istasyon_lat,istasyon_lng,not_metni,urun&order=created_at.desc&limit=5000',{headers:{'apikey':SUPABASE_KEY}})
+      fetch(SUPABASE_URL+'/rest/v1/ziyaretler?select=id,istasyon_adi,istasyon_marka,sonuc,istasyon_lat,istasyon_lng,not_metni,urun,rakip_ekipman&order=created_at.desc&limit=5000',{headers:{'apikey':SUPABASE_KEY}})
         .then(function(r){return r.json();}).then(function(zv){
           if(Array.isArray(zv)){
             zv.forEach(function(z){
               if(!ziyaretRenkMap[z.istasyon_adi]) ziyaretRenkMap[z.istasyon_adi]=z.sonuc;
-              // Marka haritası
-              if(z.urun){
-                var hw=z.urun.toLowerCase().indexOf('washstop')>=0;
-                var hi=z.urun.toLowerCase().indexOf('istobal')>=0;
-                if((hw||hi)&&!markaMap[z.istasyon_adi])
-                  markaMap[z.istasyon_adi]=(hw&&hi)?'her_ikisi':hw?'washstop':'istobal';
+              // Mevcut/rakip ekipman alanından marka tespiti (öncelikli) + urun yedek
+              var ekipman = ((z.rakip_ekipman||'')+(z.urun||'')).toLowerCase();
+              if(ekipman && !markaMap[z.istasyon_adi]){
+                var hw = /washstop|jetwash|mnex/.test(ekipman);
+                var hi = /istobal|mstart|mwash|vakum/.test(ekipman);
+                if(hw||hi) markaMap[z.istasyon_adi]=(hw&&hi)?'her_ikisi':hw?'washstop':'istobal';
               }
             });
             istasyonlariHaritayaEkle();
             ziyaretKonumMarkerEkle(zv);
+            ziyaretYuzdesiGuncelle();
           } else {
             istasyonlariHaritayaEkle();
+            ziyaretYuzdesiGuncelle();
           }
           ozelNoktalariYukle();
         }).catch(function(){ istasyonlariHaritayaEkle(); ozelNoktalariYukle(); });
@@ -920,14 +943,17 @@ function ozelNoktalariYukle() {
 function ziyaretFiltrele(mod) {
   if(!_clusterGroup) return;
   _aktifZiyaretFiltre = mod;
-  // Buton stillerini güncelle
+  // Hem legend hem mobil bar butonlarını güncelle
   ['tumu','edilenler','edilmeyenler'].forEach(function(k){
-    var btn = document.getElementById('zf-'+k);
-    if(!btn) return;
     var aktif = (mod === (k==='tumu'?'tumu':k==='edilenler'?'ziyaret_edilenler':'ziyaret_edilmeyenler'));
-    btn.style.background = aktif ? '#7ab528' : 'white';
-    btn.style.color = aktif ? 'white' : '#374151';
-    btn.style.borderColor = aktif ? '#7ab528' : '#e5e7eb';
+    ['zf-'+k, 'mzf-'+k].forEach(function(id){
+      var btn = document.getElementById(id);
+      if(!btn) return;
+      btn.style.background = aktif ? '#7ab528' : 'white';
+      btn.style.color = aktif ? 'white' : '#374151';
+      btn.style.borderColor = aktif ? '#7ab528' : '#e5e7eb';
+      btn.style.fontWeight = aktif ? '600' : '500';
+    });
   });
   // Cluster'ı temizle ve filtrele
   _clusterGroup.clearLayers();
@@ -938,6 +964,18 @@ function ziyaretFiltrele(mod) {
       (mod === 'ziyaret_edilmeyenler' && !ziyaretVar);
     if(goster) _clusterGroup.addLayer(item.marker);
   });
+}
+
+function ziyaretYuzdesiGuncelle() {
+  var toplam = ISTASYON_DATA ? ISTASYON_DATA.length : 0;
+  if(!toplam) return;
+  var ziyaretEdilen = Object.keys(ziyaretRenkMap).length;
+  var yuzde = (ziyaretEdilen / toplam * 100).toFixed(1);
+  var el = document.getElementById('ziyaret-yuzdesi');
+  if(el){
+    el.textContent = 'Türkiye geneli: %'+yuzde+' ziyaret edildi ('+ziyaretEdilen.toLocaleString('tr-TR')+' / '+toplam.toLocaleString('tr-TR')+' istasyon)';
+    el.style.display = 'block';
+  }
 }
 
 function markerRenkGuncelle(istAdi, sonuc) {
