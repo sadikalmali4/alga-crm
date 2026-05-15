@@ -1448,35 +1448,32 @@ async function ziyaretKaydet() {
       bayi_id:mevcutKullanici.bayi_id||null,
       bayi_adi:mevcutKullanici.bayi_adi||null,
     };
-    var resp=await Promise.race([
-      fetch(SUPABASE_URL+'/rest/v1/ziyaretler',{
-        method:'POST',
-        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+(_accessToken||SUPABASE_KEY),'Content-Type':'application/json','Prefer':'return=minimal'},
-        body:JSON.stringify(ziyaret)
-      }),
-      new Promise(function(_,rej){setTimeout(function(){rej(new Error('Zaman aşımı (10sn)'));},10000);})
-    ]);
-    if(!resp.ok){
-      var errTxt=await resp.text();
-      // Kolon yoksa (yetkili_email/telefon) bu alanlar olmadan tekrar dene
-      if(resp.status===400 && (errTxt.indexOf('yetkili_email')>=0||errTxt.indexOf('yetkili_telefon')>=0)){
-        delete ziyaret.yetkili_email; delete ziyaret.yetkili_telefon;
-        var resp2=await fetch(SUPABASE_URL+'/rest/v1/ziyaretler',{
-          method:'POST',
-          headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+(_accessToken||SUPABASE_KEY),'Content-Type':'application/json','Prefer':'return=minimal'},
-          body:JSON.stringify(ziyaret)
-        });
-        if(!resp2.ok){ var t2=await resp2.text(); throw new Error('HTTP '+resp2.status+': '+t2); }
-      } else {
-        throw new Error('HTTP '+resp.status+': '+errTxt);
+    // Eksik kolon varsa otomatik çıkarıp tekrar dene (maks 8 deneme)
+    var _hdrs = {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+(_accessToken||SUPABASE_KEY),'Content-Type':'application/json','Prefer':'return=minimal'};
+    var _kayitOk = false;
+    for(var _deneme=0; _deneme<8; _deneme++){
+      var _r = await Promise.race([
+        fetch(SUPABASE_URL+'/rest/v1/ziyaretler',{method:'POST',headers:_hdrs,body:JSON.stringify(ziyaret)}),
+        new Promise(function(_,rej){setTimeout(function(){rej(new Error('Zaman aşımı (10sn)'));},10000);})
+      ]);
+      if(_r.ok){ _kayitOk=true; break; }
+      var _et = await _r.text();
+      var _ej = {}; try{ _ej=JSON.parse(_et); }catch(e){}
+      // Supabase: kolon bulunamadı (kod 42703) → kolonu çıkar, tekrar dene
+      if(_ej.code==='42703'||(_ej.message&&_ej.message.indexOf('does not exist')>=0)){
+        var _km = _ej.message && _ej.message.match(/column "([^"]+)"/);
+        if(_km && _km[1] && ziyaret.hasOwnProperty(_km[1])){ delete ziyaret[_km[1]]; continue; }
       }
+      // Başka hata → direkt fırlat
+      throw new Error(_ej.message || ('HTTP '+_r.status));
     }
+    if(!_kayitOk) throw new Error('Kayıt başarısız oldu.');
     markerRenkGuncelle(secilenIstasyon.adi, secilenSonuc);
     otosaveSil(); // Taslağı temizle
     toast('✓ Ziyaret kaydedildi!');
     formTemizle(); tabDegistir('gecmis');
   } catch(e) {
-    toast('Hata: '+(e.message||String(e)));
+    toast('❌ '+(e.message||String(e)));
   }
   btn.disabled=false; btn.textContent='Ziyareti Kaydet';
 }
