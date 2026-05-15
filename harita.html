@@ -290,6 +290,13 @@
   @keyframes konum-pulse{0%{transform:translate(-50%,-50%) scale(.5);opacity:1;}100%{transform:translate(-50%,-50%) scale(2);opacity:0;}}
   .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
 
+  /* EKİPMAN CHİPLERİ */
+  .ekipman-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:12px;font-family:inherit;cursor:pointer;transition:all .15s;white-space:nowrap;}
+  .ekipman-chip:active{transform:scale(.96);}
+  .ekipman-chip.aktif-ws{border-color:#1d4ed8;background:#eff6ff;color:#1d4ed8;font-weight:600;}
+  .ekipman-chip.aktif-ist{border-color:#ea580c;background:#fff7ed;color:#ea580c;font-weight:600;}
+  .ekipman-chip.aktif-genel{border-color:#7ab528;background:#f0f7e6;color:#5a8a1a;font-weight:600;}
+
   /* DİĞER */
   #panel-ac-btn{position:fixed;bottom:20px;right:16px;z-index:850;width:52px;height:52px;background:var(--blue);color:white;border:none;border-radius:50%;font-size:22px;cursor:pointer;box-shadow:var(--shadow-lg);display:flex;align-items:center;justify-content:center;transition:transform .15s;}
   #panel-ac-btn:hover{transform:scale(1.08);}
@@ -500,10 +507,28 @@
         <div class="f-grup"><label>Self Servis (₺)</label><input type="number" id="f-fiyat-self" placeholder="0" step="1"/></div>
       </div>
 
-      <!-- RAKİP EKİPMAN -->
+      <!-- MEVCUT / RAKİP EKİPMAN -->
       <div class="f-grup">
         <label>🏢 Mevcut / Rakip Ekipman</label>
-        <input type="text" id="f-rakip" placeholder="Ryko, WashTec, mevcut sistem..."/>
+        <input type="hidden" id="f-rakip"/>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;" id="ekipman-chipler">
+          <button type="button" class="ekipman-chip" data-val="Washstop Jetwash" data-tip="ws" onclick="ekipmanChipToggle(this)">
+            <span style="width:7px;height:7px;background:#1d4ed8;border-radius:50%;flex-shrink:0;"></span>Jetwash
+          </button>
+          <button type="button" class="ekipman-chip" data-val="Washstop Mnex" data-tip="ws" onclick="ekipmanChipToggle(this)">
+            <span style="width:7px;height:7px;background:#1d4ed8;border-radius:50%;flex-shrink:0;"></span>Mnex
+          </button>
+          <button type="button" class="ekipman-chip" data-val="Istobal Mstart" data-tip="ist" onclick="ekipmanChipToggle(this)">
+            <span style="width:7px;height:7px;background:#ea580c;border-radius:50%;flex-shrink:0;"></span>Mstart
+          </button>
+          <button type="button" class="ekipman-chip" data-val="Istobal Mwash" data-tip="ist" onclick="ekipmanChipToggle(this)">
+            <span style="width:7px;height:7px;background:#ea580c;border-radius:50%;flex-shrink:0;"></span>Mwash
+          </button>
+          <button type="button" class="ekipman-chip" data-val="Vakum" data-tip="genel" onclick="ekipmanChipToggle(this)">
+            <span style="width:7px;height:7px;background:#6b7280;border-radius:50%;flex-shrink:0;"></span>Vakum
+          </button>
+        </div>
+        <input type="text" id="f-rakip-diger" placeholder="Diğer / Rakip: Ryko, WashTec..." oninput="ekipmanHiddenGuncelle()" style="font-size:12px;"/>
       </div>
 
       <!-- SONUÇ -->
@@ -1138,6 +1163,7 @@ function otosaveGeriYukle(){
       FORM_ALANLARI.forEach(function(id){
         var el = document.getElementById(id); if(el && draft[id]) el.value = draft[id];
       });
+      if(draft['f-rakip']) ekipmanChiplerYukle(draft['f-rakip']);
       if(draft.katalog){ var kEl=document.getElementById('f-katalog'); if(kEl) kEl.checked=true; }
       if(draft.sonuc){
         var sonucBtn = document.querySelector('.sonuc-btn[data-deger="'+draft.sonuc+'"]');
@@ -1150,6 +1176,49 @@ function otosaveGeriYukle(){
 
 function otosaveSil(){ try { localStorage.removeItem('alga_crm_draft'); } catch(e){} }
 
+// ——— EKİPMAN CHİPLERİ ———
+function ekipmanChipToggle(btn) {
+  var tip = btn.getAttribute('data-tip');
+  var aktifClass = 'aktif-'+(tip||'genel');
+  btn.classList.toggle(aktifClass);
+  ekipmanHiddenGuncelle();
+}
+function ekipmanHiddenGuncelle() {
+  var secili = [];
+  document.querySelectorAll('#ekipman-chipler .ekipman-chip').forEach(function(b){
+    if(b.className.indexOf('aktif') >= 0) secili.push(b.getAttribute('data-val'));
+  });
+  var diger = (document.getElementById('f-rakip-diger')||{}).value||'';
+  if(diger.trim()) secili.push(diger.trim());
+  var el = document.getElementById('f-rakip'); if(el) el.value = secili.join(', ');
+}
+function ekipmanChiplerSifirla() {
+  document.querySelectorAll('#ekipman-chipler .ekipman-chip').forEach(function(b){
+    b.className = 'ekipman-chip';
+  });
+  var fd = document.getElementById('f-rakip-diger'); if(fd) fd.value = '';
+  var fh = document.getElementById('f-rakip'); if(fh) fh.value = '';
+}
+function ekipmanChiplerYukle(val) {
+  ekipmanChiplerSifirla();
+  if(!val) return;
+  var low = val.toLowerCase();
+  document.querySelectorAll('#ekipman-chipler .ekipman-chip').forEach(function(b){
+    if(low.indexOf(b.getAttribute('data-val').toLowerCase()) >= 0){
+      var tip = b.getAttribute('data-tip');
+      b.classList.add('aktif-'+(tip||'genel'));
+    }
+  });
+  // Kalan metin → diğer kutusuna
+  var kalan = val;
+  ['Washstop Jetwash','Washstop Mnex','Istobal Mstart','Istobal Mwash','Vakum'].forEach(function(v){
+    kalan = kalan.replace(new RegExp(v+',?\\s*','gi'),'');
+  });
+  kalan = kalan.replace(/^,\s*|,\s*$/g,'').trim();
+  var fd = document.getElementById('f-rakip-diger'); if(fd && kalan) fd.value = kalan;
+  var fh = document.getElementById('f-rakip'); if(fh) fh.value = val;
+}
+
 function formTemizle() {
   otosaveSil();
   ['f-yetkili','f-unvan','f-yetkili-email','f-yetkili-tel','f-arac-sayisi','f-fiyat-oto','f-fiyat-self','f-not','f-rakip',
@@ -1159,6 +1228,7 @@ function formTemizle() {
   });
   paraSec('TL');
   teklifDurumSec('beklemede');
+  ekipmanChiplerSifirla();
   document.querySelectorAll('.urun-check input[type=checkbox]').forEach(function(cb){
     cb.checked=false;
     var lbl=cb.closest('.urun-check'); if(lbl) lbl.classList.remove('secili');
@@ -1326,6 +1396,7 @@ async function ziyaretKaydet() {
   if(!secilenIstasyon){ toast('İstasyon seçilmedi'); return; }
   var userId=mevcutKullanici?(mevcutKullanici.id||mevcutKullanici.user_id):null;
   if(!userId){ toast('Oturum bulunamadı, sayfayı yenileyin'); return; }
+  ekipmanHiddenGuncelle(); // chip seçimlerini f-rakip'e yaz
   var btn=document.getElementById('kaydet-btn');
   btn.disabled=true; btn.textContent='Kaydediliyor...';
   try {
