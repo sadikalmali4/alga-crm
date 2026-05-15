@@ -792,45 +792,12 @@ function ziyaretDetayAc(id){
         '💾 Konumu Kaydet</button>'+
       '</div>';
 
-    // ── Ziyaret İçeriği Düzenleme ──
-    var sonucSecenekler = ['sicak','kararsiz','soguk','anlasma','teklif','takipte'];
-    var sonucLblMap = {sicak:'🔥 Sıcak',kararsiz:'😐 Kararsız',soguk:'❄️ Soğuk',anlasma:'🤝 Anlaşma',teklif:'📋 Teklif',takipte:'🔔 Takipte'};
-    var sonucOpts = sonucSecenekler.map(function(s){
-      return '<option value="'+s+'"'+(z.sonuc===s?' selected':'')+'>'+sonucLblMap[s]+'</option>';
-    }).join('');
-    var paraBirimiOpts = ['TRY','EUR','USD'].map(function(p){
-      return '<option value="'+p+'"'+(z.teklif_para_birimi===p?' selected':'')+'>'+p+'</option>';
-    }).join('');
-    html +=
-      '<div style="border-top:1px solid #e5e7eb;margin-top:18px;padding-top:16px;" id="ziyaret-duzenle-panel">'+
-      '<div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">✏️ Ziyaret İçeriğini Düzenle</div>'+
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">'+
-        '<div><label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:3px;">Sonuç</label>'+
-          '<select id="ze-sonuc" style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'">'+sonucOpts+'</select></div>'+
-        '<div><label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:3px;">Takip Tarihi</label>'+
-          '<input type="date" id="ze-takip" value="'+(z.takip_tarihi||'')+'" style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'"/></div>'+
-      '</div>'+
-      '<div style="display:grid;grid-template-columns:1fr 80px;gap:8px;margin-bottom:8px;">'+
-        '<div><label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:3px;">Teklif Tutarı</label>'+
-          '<input type="number" id="ze-teklif" value="'+(z.teklif_tutari||'')+'" placeholder="0" style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'"/></div>'+
-        '<div><label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:3px;">Para Birimi</label>'+
-          '<select id="ze-para" style="width:100%;padding:8px 6px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'">'+paraBirimiOpts+'</select></div>'+
-      '</div>'+
-      '<div style="margin-bottom:8px;"><label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:3px;">Ürün / Ekipman</label>'+
-        '<input type="text" id="ze-urun" value="'+(z.urun||'')+'" placeholder="Jetwash, Mstart, Vakum..." style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'"/></div>'+
-      '<div style="margin-bottom:12px;"><label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:3px;">Ziyaret Notu</label>'+
-        '<textarea id="ze-not" rows="3" placeholder="Ziyaret notları..." style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;resize:vertical;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'">'+(z.not_metni||'')+'</textarea></div>'+
-      '<button onclick="ziyaretKaydetDuzenle(\''+z.id+'\')" '+
-        'style="width:100%;background:#7ab528;color:white;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">'+
-        '💾 Ziyareti Güncelle</button>'+
-      '<button onclick="ziyaretSil(\''+z.id+'\')" '+
-        'style="width:100%;background:white;color:#e02424;border:1.5px solid #fca5a5;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;margin-top:6px;">'+
-        '🗑 Ziyareti Sil</button>'+
-      '</div>';
+    html += adminDuzenleFormOlustur(z);
   }
 
   document.getElementById('detay-icerik').innerHTML = html;
   document.getElementById('detay-modal').style.display = 'flex';
+  if(_mevcutRol==='admin') admEkipmanGuncelle();
 }
 
 function buHaftaFiltrele(){
@@ -1338,37 +1305,218 @@ async function saticiRolGuncelle(profilId, yeniRol){
   if(!r.ok) alert('Rol güncellenemedi: '+r.status);
 }
 
-// ═══ ZİYARET DÜZENLEME & SİLME (sadece admin) ═══
+// ═══ ZİYARET DÜZENLEME & FOTOĞRAF YÜKLEME (sadece admin) ═══
+var _adminFotoler = [null, null, null];
+var _adminFotoSilindi = [false, false, false];
+
+async function admResimSikistir(file) {
+  return new Promise(function(resolve) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var MAX=1200, w=img.width, h=img.height;
+        if(w>MAX||h>MAX){ if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;} }
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        canvas.toBlob(function(blob){ resolve(blob); },'image/jpeg',0.78);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+async function admFotoYukle(file, istAdi) {
+  if(!file) return null;
+  var path = 'admin/'+istAdi.replace(/[^a-zA-Z0-9]/g,'_').substring(0,30)+'_'+Date.now()+'.jpg';
+  var compressed = await admResimSikistir(file);
+  var headers = {'apikey':SUPABASE_KEY,'Content-Type':'image/jpeg','x-upsert':'true'};
+  if(_authToken) headers['Authorization']='Bearer '+_authToken;
+  var resp = await fetch(SUPABASE_URL+'/storage/v1/object/ziyaret-fotograflari/'+path, {method:'POST',headers:headers,body:compressed});
+  if(!resp.ok) return null;
+  return SUPABASE_URL+'/storage/v1/object/public/ziyaret-fotograflari/'+path;
+}
+function admFotoSec(slot, input) {
+  var file = input.files[0]; if(!file) return;
+  _adminFotoler[slot] = file;
+  _adminFotoSilindi[slot] = false;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var el = document.getElementById('adm-foto-'+slot);
+    if(!el) return;
+    el.innerHTML = '<div style="position:relative;border-radius:8px;overflow:hidden;background:#f3f4f6;aspect-ratio:4/3;">'
+      +'<img src="'+e.target.result+'" style="width:100%;height:100%;object-fit:cover;"/>'
+      +'<label style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.5);color:white;text-align:center;padding:4px;font-size:11px;cursor:pointer;">📷 Değiştir<input type="file" accept="image/*" onchange="admFotoSec('+slot+',this)" style="display:none;"/></label>'
+      +'<button onclick="admFotoSil('+slot+')" style="position:absolute;top:4px;right:4px;background:rgba(220,38,38,.85);color:white;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:14px;line-height:1.2;">×</button>'
+      +'</div>';
+  };
+  reader.readAsDataURL(file);
+}
+function admFotoSil(slot) {
+  _adminFotoler[slot] = null;
+  _adminFotoSilindi[slot] = true;
+  var el = document.getElementById('adm-foto-'+slot);
+  if(!el) return;
+  el.innerHTML = '<label style="display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed #d1d5db;border-radius:8px;aspect-ratio:4/3;cursor:pointer;background:#f9fafb;color:#9ca3af;font-size:11px;gap:3px;">'
+    +'<span style="font-size:22px;">📷</span><span>Foto '+(slot+1)+'</span>'
+    +'<input type="file" accept="image/*" onchange="admFotoSec('+slot+',this)" style="display:none;"/></label>';
+}
+function admChipToggle(btn) {
+  var tip = btn.getAttribute('data-tip');
+  var cls = 'adm-chip-aktif-'+tip;
+  if(btn.classList.contains(cls)){
+    btn.classList.remove(cls);
+    btn.style.cssText='display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:12px;font-family:inherit;cursor:pointer;';
+  } else {
+    btn.classList.add(cls);
+    var c=tip==='ws'?['#1d4ed8','#eff6ff','#1d4ed8']:tip==='ist'?['#ea580c','#fff7ed','#ea580c']:['#7ab528','#f0f7e6','#5a8a1a'];
+    btn.style.cssText='display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;border:1.5px solid '+c[0]+';background:'+c[1]+';color:'+c[2]+';font-size:12px;font-family:inherit;cursor:pointer;font-weight:600;';
+  }
+  admEkipmanGuncelle();
+}
+function admEkipmanGuncelle() {
+  var secili=[];
+  document.querySelectorAll('#adm-ekipman-chipler .adm-chip').forEach(function(b){
+    if(b.className.indexOf('adm-chip-aktif')>=0) secili.push(b.getAttribute('data-val'));
+  });
+  var diger=(document.getElementById('ze-rakip-diger')||{}).value||'';
+  if(diger.trim()) secili.push(diger.trim());
+  var el=document.getElementById('ze-rakip'); if(el) el.value=secili.join(', ');
+}
+
+function adminDuzenleFormOlustur(z) {
+  _adminFotoler=[null,null,null]; _adminFotoSilindi=[false,false,false];
+  var S='style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'"';
+  var lbl=function(t){ return '<label style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">'+t+'</label>'; };
+  var g2=function(a,b){ return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">'+a+b+'</div>'; };
+  // Sonuç
+  var sOpts=['sicak','kararsiz','soguk','anlasma','teklif','takipte'];
+  var sLbl={sicak:'🔥 Sıcak',kararsiz:'😐 Kararsız',soguk:'❄️ Soğuk',anlasma:'🤝 Anlaşma',teklif:'📋 Teklif',takipte:'🔔 Takipte'};
+  var sonucOpts=sOpts.map(function(s){ return '<option value="'+s+'"'+(z.sonuc===s?' selected':'')+'>'+sLbl[s]+'</option>'; }).join('');
+  var paraOpts=['TRY','EUR','USD'].map(function(p){ return '<option value="'+p+'"'+((z.teklif_para_birimi||'TRY')===p?' selected':'')+'>'+p+'</option>'; }).join('');
+  // Ekipman chipler
+  var ekipmanDefs=[{v:'Washstop Jetwash',t:'ws',l:'Jetwash',c:'#1d4ed8'},{v:'Washstop Mnex',t:'ws',l:'Mnex',c:'#1d4ed8'},{v:'Istobal Mstart',t:'ist',l:'Mstart',c:'#ea580c'},{v:'Istobal Mwash',t:'ist',l:'Mwash',c:'#ea580c'},{v:'Vakum',t:'genel',l:'Vakum',c:'#6b7280'}];
+  var rkLow=(z.rakip_ekipman||'').toLowerCase();
+  var chipHtml=ekipmanDefs.map(function(e){
+    var aktif=rkLow.indexOf(e.v.toLowerCase())>=0;
+    var aktifStyle=aktif?'border:1.5px solid '+e.c+';background:'+(e.t==='ws'?'#eff6ff':e.t==='ist'?'#fff7ed':'#f0f7e6')+';color:'+e.c+';font-weight:600;':'border:1.5px solid #e5e7eb;background:white;color:#374151;';
+    return '<button type="button" onclick="admChipToggle(this)" data-val="'+e.v+'" data-tip="'+e.t+'" class="adm-chip'+(aktif?' adm-chip-aktif-'+e.t:'')+'" style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:12px;font-family:inherit;cursor:pointer;'+aktifStyle+'">'+'<span style="width:7px;height:7px;background:'+e.c+';border-radius:50%;flex-shrink:0;"></span>'+e.l+'</button>';
+  }).join('');
+  var rkDiger=(z.rakip_ekipman||'');
+  ekipmanDefs.forEach(function(e){ rkDiger=rkDiger.replace(new RegExp(e.v+',?\\s*','gi'),''); });
+  rkDiger=rkDiger.replace(/^,\s*|,\s*$/g,'').trim();
+  // Foto slotları
+  function fotoSlot(s, url) {
+    if(url) return '<div id="adm-foto-'+s+'"><div style="position:relative;border-radius:8px;overflow:hidden;background:#f3f4f6;aspect-ratio:4/3;">'
+      +'<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="window.open(\''+url+'\',\'_blank\')"/>'
+      +'<label style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.5);color:white;text-align:center;padding:4px;font-size:11px;cursor:pointer;">📷 Değiştir<input type="file" accept="image/*" onchange="admFotoSec('+s+',this)" style="display:none;"/></label>'
+      +'<button onclick="admFotoSil('+s+')" style="position:absolute;top:4px;right:4px;background:rgba(220,38,38,.85);color:white;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:14px;line-height:1.2;">×</button>'
+      +'</div></div>';
+    return '<div id="adm-foto-'+s+'"><label style="display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed #d1d5db;border-radius:8px;aspect-ratio:4/3;cursor:pointer;background:#f9fafb;color:#9ca3af;font-size:11px;gap:3px;">'
+      +'<span style="font-size:22px;">📷</span><span>Foto '+(s+1)+'</span><input type="file" accept="image/*" onchange="admFotoSec('+s+',this)" style="display:none;"/></label></div>';
+  }
+  return '<div style="border-top:1px solid #e5e7eb;margin-top:18px;padding-top:16px;">'
+  +'<div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px;">✏️ Ziyareti Düzenle</div>'
+  +g2('<div>'+lbl('Sonuç')+'<select id="ze-sonuc" '+S+'>'+sonucOpts+'</select></div>',
+      '<div>'+lbl('Takip Tarihi')+'<input type="date" id="ze-takip" value="'+(z.takip_tarihi||'')+'" '+S+'/></div>')
+  +g2('<div>'+lbl('👤 Yetkili Adı')+'<input type="text" id="ze-yetkili" value="'+(z.yetkili_adi||'')+'" placeholder="Ad Soyad" '+S+'/></div>',
+      '<div>'+lbl('Unvan')+'<input type="text" id="ze-unvan" value="'+(z.yetkili_unvan||'')+'" placeholder="Müdür..." '+S+'/></div>')
+  +g2('<div>'+lbl('📧 E-posta')+'<input type="email" id="ze-email" value="'+(z.yetkili_email||'')+'" placeholder="ad@firma.com" '+S+'/></div>',
+      '<div>'+lbl('📞 Telefon')+'<input type="tel" id="ze-telefon" value="'+(z.yetkili_telefon||'')+'" placeholder="0532 000 0000" '+S+'/></div>')
+  +'<div style="margin-bottom:10px;">'+lbl('🏢 Mevcut / Rakip Ekipman')
+  +'<input type="hidden" id="ze-rakip"/>'
+  +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:7px;" id="adm-ekipman-chipler">'+chipHtml+'</div>'
+  +'<input type="text" id="ze-rakip-diger" value="'+rkDiger+'" placeholder="Diğer / Rakip: Ryko, WashTec..." oninput="admEkipmanGuncelle()" '+S+'/></div>'
+  +'<div style="margin-bottom:10px;">'+lbl('📦 Teklif Edilen Ürünler')+'<input type="text" id="ze-urun" value="'+(z.urun||'')+'" placeholder="Jetwash, Mstart, demo..." '+S+'/></div>'
+  +'<div style="display:grid;grid-template-columns:1fr 80px;gap:8px;margin-bottom:10px;"><div>'+lbl('Teklif Tutarı')+'<input type="number" id="ze-teklif" value="'+(z.teklif_tutari||'')+'" placeholder="0" '+S+'/></div>'
+  +'<div>'+lbl('Para')+'<select id="ze-para" '+S+'>'+paraOpts+'</select></div></div>'
+  +'<div style="margin-bottom:10px;">'+lbl('💧 Su Analiz')
+  +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;">'
+  +'<div><div style="font-size:10px;color:#9ca3af;margin-bottom:2px;">Sertlik</div><input type="number" id="ze-sertlik" value="'+(z.su_sertlik||'')+'" placeholder="FR°" style="width:100%;padding:7px 8px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'"/></div>'
+  +'<div><div style="font-size:10px;color:#9ca3af;margin-bottom:2px;">pH</div><input type="number" id="ze-ph" value="'+(z.su_ph||'')+'" placeholder="7.2" step="0.1" style="width:100%;padding:7px 8px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'"/></div>'
+  +'<div><div style="font-size:10px;color:#9ca3af;margin-bottom:2px;">PPM</div><input type="number" id="ze-ppm" value="'+(z.su_ppm||'')+'" placeholder="450" style="width:100%;padding:7px 8px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'"/></div>'
+  +'<div><div style="font-size:10px;color:#9ca3af;margin-bottom:2px;">EC</div><input type="number" id="ze-ec" value="'+(z.su_ec||'')+'" placeholder="680" style="width:100%;padding:7px 8px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'"/></div>'
+  +'</div></div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">'
+  +'<div><div style="font-size:10px;color:#9ca3af;margin-bottom:2px;">Oto Yıkama ₺</div><input type="number" id="ze-fiyat-oto" value="'+(z.fiyat_otomatik||'')+'" placeholder="0" '+S+'/></div>'
+  +'<div><div style="font-size:10px;color:#9ca3af;margin-bottom:2px;">Self Servis ₺</div><input type="number" id="ze-fiyat-self" value="'+(z.fiyat_selfservis||'')+'" placeholder="0" '+S+'/></div>'
+  +'<div><div style="font-size:10px;color:#9ca3af;margin-bottom:2px;">Araç Sayısı</div><input type="number" id="ze-arac" value="'+(z.arac_sayisi||'')+'" placeholder="0" '+S+'/></div>'
+  +'</div>'
+  +'<div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap;">'
+  +'<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="ze-katalog"'+(z.katalog_birakildi?' checked':'')+' style="width:16px;height:16px;accent-color:#7ab528;cursor:pointer;"/> 📚 Katalog bırakıldı</label>'
+  +'<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="ze-kiralik"'+(z.kiralik_teklif?' checked':'')+' style="width:16px;height:16px;accent-color:#7ab528;cursor:pointer;"/> 🔑 Kiralık</label>'
+  +'</div>'
+  +'<div style="margin-bottom:12px;">'+lbl('📝 Not')+'<textarea id="ze-not" rows="3" '+S.replace('padding:8px','padding:8px')+' style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;resize:vertical;" onfocus="this.style.borderColor=\'#7ab528\'" onblur="this.style.borderColor=\'#e5e7eb\'">'+(z.not_metni||'')+'</textarea></div>'
+  +'<div style="margin-bottom:14px;">'+lbl('📸 Fotoğraflar (maks 3)')
+  +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">'+fotoSlot(0,z.foto_url)+fotoSlot(1,z.foto_url_2)+fotoSlot(2,z.foto_url_3)+'</div></div>'
+  +'<button id="ze-kaydet-btn" onclick="ziyaretKaydetDuzenle(\''+z.id+'\')" style="width:100%;background:#7ab528;color:white;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:6px;">💾 Ziyareti Güncelle</button>'
+  +'<button onclick="ziyaretSil(\''+z.id+'\')" style="width:100%;background:white;color:#e02424;border:1.5px solid #fca5a5;border-radius:8px;padding:8px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;">🗑 Ziyareti Sil</button>'
+  +'</div>';
+}
+
 async function ziyaretKaydetDuzenle(id){
-  var btn = event && event.target;
-  if(btn){ btn.disabled=true; btn.textContent='Kaydediliyor...'; }
+  admEkipmanGuncelle();
+  var kaydetBtn = document.getElementById('ze-kaydet-btn');
+  if(kaydetBtn){ kaydetBtn.disabled=true; kaydetBtn.textContent='Kaydediliyor...'; }
+  var z = tumVeriler.find(function(x){ return x.id===id; });
+  var istAdi = z ? (z.istasyon_adi||'ist') : 'ist';
+  // Fotoğrafları yükle
+  var fotoUrls = [z?z.foto_url||null:null, z?z.foto_url_2||null:null, z?z.foto_url_3||null:null];
+  for(var fi=0; fi<3; fi++){
+    if(_adminFotoler[fi]){
+      var fu = await admFotoYukle(_adminFotoler[fi], istAdi);
+      if(fu) fotoUrls[fi]=fu;
+    }
+    if(_adminFotoSilindi[fi]) fotoUrls[fi]=null;
+  }
   var guncelleme = {
     sonuc: document.getElementById('ze-sonuc').value,
-    takip_tarihi: document.getElementById('ze-takip').value || null,
-    teklif_tutari: parseFloat(document.getElementById('ze-teklif').value)||null,
-    teklif_para_birimi: document.getElementById('ze-para').value,
+    takip_tarihi: document.getElementById('ze-takip').value||null,
+    yetkili_adi: document.getElementById('ze-yetkili').value||null,
+    yetkili_unvan: document.getElementById('ze-unvan').value||null,
+    yetkili_email: document.getElementById('ze-email').value||null,
+    yetkili_telefon: document.getElementById('ze-telefon').value||null,
+    rakip_ekipman: document.getElementById('ze-rakip').value||null,
     urun: document.getElementById('ze-urun').value.trim()||null,
-    not_metni: document.getElementById('ze-not').value.trim()||null
+    teklif_tutari: parseFloat(document.getElementById('ze-teklif').value)||null,
+    teklif_para_birimi: document.getElementById('ze-para').value||'TRY',
+    su_sertlik: parseFloat(document.getElementById('ze-sertlik').value)||null,
+    su_ph: parseFloat(document.getElementById('ze-ph').value)||null,
+    su_ppm: parseFloat(document.getElementById('ze-ppm').value)||null,
+    su_ec: parseFloat(document.getElementById('ze-ec').value)||null,
+    fiyat_otomatik: parseFloat(document.getElementById('ze-fiyat-oto').value)||null,
+    fiyat_selfservis: parseFloat(document.getElementById('ze-fiyat-self').value)||null,
+    arac_sayisi: parseInt(document.getElementById('ze-arac').value)||null,
+    katalog_birakildi: document.getElementById('ze-katalog').checked,
+    kiralik_teklif: document.getElementById('ze-kiralik').checked,
+    not_metni: document.getElementById('ze-not').value.trim()||null,
+    foto_url: fotoUrls[0], foto_url_2: fotoUrls[1], foto_url_3: fotoUrls[2]
   };
-  var r = await fetch(SUPABASE_URL+'/rest/v1/ziyaretler?id=eq.'+id,{
-    method:'PATCH',
-    headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal'}),
-    body:JSON.stringify(guncelleme)
-  });
-  if(r.ok){
-    var z = tumVeriler.find(function(x){ return x.id===id; });
-    if(z){ Object.assign(z, guncelleme); }
-    raporFiltrele();
-    document.getElementById('detay-modal').style.display='none';
-    var toast=document.createElement('div');
-    toast.textContent='✅ Ziyaret güncellendi';
-    toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2937;color:white;padding:10px 22px;border-radius:20px;font-size:13px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.25);';
-    document.body.appendChild(toast);
-    setTimeout(function(){ toast.remove(); }, 2500);
-  } else {
-    alert('Güncelleme başarısız: '+r.status);
-    if(btn){ btn.disabled=false; btn.textContent='💾 Ziyareti Güncelle'; }
+  // Eksik kolon varsa otomatik strip & retry
+  var _g = Object.assign({}, guncelleme);
+  for(var _d=0; _d<8; _d++){
+    var _r = await fetch(SUPABASE_URL+'/rest/v1/ziyaretler?id=eq.'+id,{
+      method:'PATCH', headers:hdrs({'Content-Type':'application/json','Prefer':'return=minimal'}),
+      body:JSON.stringify(_g)
+    });
+    if(_r.ok) break;
+    var _et=await _r.text(); var _ej={}; try{_ej=JSON.parse(_et);}catch(e){}
+    if(_ej.code==='42703'&&_ej.message){
+      var _km=_ej.message.match(/column "([^"]+)"/);
+      if(_km&&_km[1]){ delete _g[_km[1]]; continue; }
+    }
+    alert('Güncelleme başarısız: '+(_ej.message||_et));
+    if(kaydetBtn){kaydetBtn.disabled=false;kaydetBtn.textContent='💾 Ziyareti Güncelle';}
+    return;
   }
+  if(z) Object.assign(z, guncelleme);
+  raporFiltrele();
+  document.getElementById('detay-modal').style.display='none';
+  var t=document.createElement('div');
+  t.textContent='✅ Ziyaret güncellendi';
+  t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2937;color:white;padding:10px 22px;border-radius:20px;font-size:13px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.25);';
+  document.body.appendChild(t); setTimeout(function(){ t.remove(); },2500);
 }
 async function ziyaretSil(id){
   if(!confirm('Bu ziyareti silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) return;
