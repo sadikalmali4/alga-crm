@@ -1459,10 +1459,15 @@ async function ziyaretKaydet() {
       if(_r.ok){ _kayitOk=true; break; }
       var _et = await _r.text();
       var _ej = {}; try{ _ej=JSON.parse(_et); }catch(e){}
-      // Supabase: kolon bulunamadı (kod 42703) → kolonu çıkar, tekrar dene
+      // Kolon bulunamadı (42703) → kolonu çıkar, tekrar dene
       if(_ej.code==='42703'||(_ej.message&&_ej.message.indexOf('does not exist')>=0)){
         var _km = _ej.message && _ej.message.match(/column "([^"]+)"/);
         if(_km && _km[1] && ziyaret.hasOwnProperty(_km[1])){ delete ziyaret[_km[1]]; continue; }
+      }
+      // CHECK constraint hatası (23514) → sonuç kısıtlaması, varsayılanla dene
+      if(_ej.code==='23514'||(_ej.message&&_ej.message.indexOf('check constraint')>=0)){
+        if(ziyaret.sonuc && ziyaret.sonuc!=='kararsiz'){ ziyaret.sonuc='kararsiz'; continue; }
+        throw new Error('Veritabanı kısıtlaması: Supabase SQL Editörde şunu çalıştırın → ALTER TABLE ziyaretler DROP CONSTRAINT IF EXISTS ziyaretler_sonuc_check;');
       }
       // Başka hata → direkt fırlat
       throw new Error(_ej.message || ('HTTP '+_r.status));
